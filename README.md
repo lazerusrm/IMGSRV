@@ -34,19 +34,53 @@ A secure, efficient service for capturing IP camera snapshots and generating tra
 
 ## Quick Start
 
-### Prerequisites
+### 🚀 One-Command Installation (Linux)
 
+**Copy and paste this single command:**
+
+```bash
+curl -sSL https://raw.githubusercontent.com/lazerusrm/IMGSRV/main/autoinstall.sh | bash
+```
+
+**Or for a minimal installation:**
+
+```bash
+curl -sSL https://raw.githubusercontent.com/lazerusrm/IMGSRV/main/install.sh | bash
+```
+
+**Or download and run manually:**
+
+```bash
+wget https://raw.githubusercontent.com/lazerusrm/IMGSRV/main/autoinstall.sh
+chmod +x autoinstall.sh
+sudo ./autoinstall.sh
+```
+
+### 🪟 Windows Development Setup
+
+For Windows development/testing:
+
+```powershell
+# Run as Administrator
+Set-ExecutionPolicy Bypass -Scope Process -Force
+iex ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/lazerusrm/IMGSRV/main/install-windows.ps1'))
+```
+
+### 📋 Manual Installation (Advanced)
+
+If you prefer manual installation:
+
+**Prerequisites:**
 - Linux system (Ubuntu 20.04+ recommended)
 - Python 3.8+
 - Root access for installation
 - IP camera with ONVIF support
 
-### Installation
-
+**Steps:**
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/yourusername/image-sequence-server.git
-   cd image-sequence-server
+   git clone https://github.com/lazerusrm/IMGSRV.git
+   cd IMGSRV
    ```
 
 2. **Run the installer**:
