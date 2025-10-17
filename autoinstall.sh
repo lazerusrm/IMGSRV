@@ -266,6 +266,13 @@ manual_service_setup() {
     python -c "import PIL; print('✅ Pillow installed')" || error "Pillow installation failed"
     python -c "import subprocess; subprocess.run(['ffmpeg', '-version'], capture_output=True); print('✅ ffmpeg available')" || error "ffmpeg not available"
     
+    # Verify rsync is available for VPS sync
+    if command -v rsync &> /dev/null; then
+        log "✅ rsync available for VPS synchronization"
+    else
+        error "rsync not found - VPS sync will not work"
+    fi
+    
     # Create basic systemd service
     cat > /etc/systemd/system/imgserv.service << 'EOF'
 [Unit]
@@ -300,8 +307,21 @@ IMAGES_DIR=/var/lib/imgserv/images
 SEQUENCES_DIR=/var/lib/imgserv/sequences
 EOF
     
-    # Set ownership
+    # Set ownership and fix permissions
     chown -R imgserv:imgserv /opt/imgserv
+    chown -R imgserv:imgserv /var/lib/imgserv
+    chown -R imgserv:imgserv /etc/imgserv
+    
+    # Fix critical permissions for VPS sync
+    log "Setting up VPS sync permissions..."
+    mkdir -p /opt/imgserv/.ssh
+    chown -R imgserv:imgserv /opt/imgserv/.ssh
+    chmod 700 /opt/imgserv/.ssh
+    
+    # Ensure imgserv can access its own directories
+    chmod 755 /var/lib/imgserv
+    chmod 755 /var/lib/imgserv/images
+    chmod 755 /var/lib/imgserv/sequences
     
     # Enable and start service
     systemctl daemon-reload

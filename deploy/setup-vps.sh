@@ -136,24 +136,29 @@ copy_ssh_key() {
     # Read public key
     PUBLIC_KEY=$(cat /opt/imgserv/.ssh/vps_key.pub)
     
-    # Copy key to VPS using sshpass
+    # Copy key to VPS using sshpass (to root user for easier management)
     sshpass -p "$VPS_PASSWORD" ssh -o StrictHostKeyChecking=no "$VPS_USER@$VPS_IP" "
-        sudo su - << 'EOF'
-        echo '$PUBLIC_KEY' >> /home/imgserv/.ssh/authorized_keys
-        chown imgserv:imgserv /home/imgserv/.ssh/authorized_keys
-        chmod 600 /home/imgserv/.ssh/authorized_keys
-EOF
+        # Add key to root's authorized_keys for VPS sync
+        echo '$PUBLIC_KEY' >> /root/.ssh/authorized_keys
+        chmod 600 /root/.ssh/authorized_keys
+        
+        # Also add to imgserv user if it exists
+        if id imgserv &>/dev/null; then
+            echo '$PUBLIC_KEY' >> /home/imgserv/.ssh/authorized_keys
+            chown imgserv:imgserv /home/imgserv/.ssh/authorized_keys
+            chmod 600 /home/imgserv/.ssh/authorized_keys
+        fi
     "
     
-    log "SSH key copied to VPS"
+    log "SSH key copied to VPS (root and imgserv users)"
 }
 
 # Test SSH connection
 test_ssh_connection() {
     log "Testing SSH connection..."
     
-    if ssh -i /opt/imgserv/.ssh/vps_key -o StrictHostKeyChecking=no imgserv@$VPS_IP "echo 'SSH connection successful'"; then
-        log "SSH connection test passed"
+    if ssh -i /opt/imgserv/.ssh/vps_key -o StrictHostKeyChecking=no root@$VPS_IP "echo 'SSH connection successful'"; then
+        log "SSH connection test passed (root user)"
         return 0
     else
         error "SSH connection test failed"
@@ -165,20 +170,20 @@ test_ssh_connection() {
 configure_camera_server() {
     log "Configuring camera server..."
     
-    # Update .env file
+    # Update .env file (use root user for VPS sync - more reliable)
     cat >> /etc/imgserv/.env << EOF
 
 # VPS synchronization settings
 VPS_ENABLED=true
 VPS_HOST=$VPS_IP
-VPS_USER=imgserv
+VPS_USER=root
 VPS_PORT=22
 VPS_REMOTE_PATH=/var/www/html/monitoring
 VPS_SSH_KEY_PATH=/opt/imgserv/.ssh/vps_key
 VPS_RSYNC_OPTIONS=-avz --delete
 EOF
     
-    log "Camera server configured"
+    log "Camera server configured with root user for VPS sync"
 }
 
 # Restart and test service

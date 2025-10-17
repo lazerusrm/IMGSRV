@@ -182,7 +182,7 @@ Edit `/etc/imgserv/.env` on your camera server:
 # Enable VPS synchronization
 VPS_ENABLED=true
 VPS_HOST=your-vps-server.com
-VPS_USER=imgserv
+VPS_USER=root
 VPS_PORT=22
 VPS_REMOTE_PATH=/var/www/html/monitoring
 VPS_SSH_KEY_PATH=/opt/imgserv/.ssh/vps_key
@@ -194,11 +194,8 @@ VPS_RSYNC_OPTIONS=-avz --delete
 # On camera server - generate SSH key pair
 ssh-keygen -t rsa -b 4096 -f /opt/imgserv/.ssh/vps_key -N ""
 
-# Copy public key to VPS
+# Copy public key to VPS (root user - more reliable)
 ssh-copy-id -i /opt/imgserv/.ssh/vps_key.pub root@your-vps-server.com
-
-# Create imgserv user on VPS and copy SSH key
-ssh root@your-vps-server.com "useradd -r -s /bin/bash -d /opt/imgserv imgserv && mkdir -p /home/imgserv/.ssh && chown -R imgserv:imgserv /home/imgserv/.ssh && chmod 700 /home/imgserv/.ssh && cp /root/.ssh/authorized_keys /home/imgserv/.ssh/authorized_keys && chown imgserv:imgserv /home/imgserv/.ssh/authorized_keys && chmod 600 /home/imgserv/.ssh/authorized_keys"
 
 # Fix permissions on camera server
 chown -R imgserv:imgserv /opt/imgserv/.ssh/
@@ -206,8 +203,8 @@ chmod 700 /opt/imgserv/.ssh/
 chmod 600 /opt/imgserv/.ssh/vps_key
 chmod 644 /opt/imgserv/.ssh/vps_key.pub
 
-# Test connection
-ssh -i /opt/imgserv/.ssh/vps_key imgserv@your-vps-server.com "echo 'Connection successful'"
+# Test connection (using root user)
+ssh -i /opt/imgserv/.ssh/vps_key root@your-vps-server.com "echo 'Connection successful'"
 ```
 
 #### 4. Restart Camera Service

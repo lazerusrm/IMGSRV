@@ -250,8 +250,11 @@ setup_ssh_access() {
     
     # Create imgserv user if it doesn't exist
     if ! id "$SERVICE_USER" &>/dev/null; then
-        useradd -r -s /bin/bash -d /opt/imgserv "$SERVICE_USER"
-        log "Created user: $SERVICE_USER"
+        # Create user with proper home directory (not system user)
+        useradd -m -s /bin/bash "$SERVICE_USER" || error "Failed to create user '$SERVICE_USER'."
+        log "Created user: $SERVICE_USER with home directory /home/$SERVICE_USER"
+    else
+        log "User '$SERVICE_USER' already exists."
     fi
     
     # Create SSH directory
