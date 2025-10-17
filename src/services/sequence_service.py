@@ -16,6 +16,7 @@ from src.config import Settings
 from src.services.camera import ONVIFCamera, CameraError
 from src.services.image_processor import ImageProcessor
 from src.services.storage import StorageManager
+from src.services.vps_sync import VPSSynchronizer
 
 logger = structlog.get_logger(__name__)
 
@@ -47,6 +48,8 @@ class ImageSequenceService:
             sequences_dir=settings.sequences_dir,
             max_storage_mb=settings.max_storage_mb
         )
+        
+        self.vps_sync = VPSSynchronizer(settings)
         
         # State management
         self.is_running = False
@@ -194,6 +197,14 @@ class ImageSequenceService:
             # Clean up old sequences (keep only the latest 3)
             await self._cleanup_old_sequences()
             
+            # Sync to VPS if enabled
+            if self.vps_sync.enabled:
+                sync_success = await self.vps_sync.sync_to_vps(self.settings.sequences_dir)
+                if sync_success:
+                    logger.info("Sequence synchronized to VPS")
+                else:
+                    logger.warning("VPS synchronization failed")
+            
             logger.info("Image sequence generated", path=str(sequence_path))
             return sequence_path
             
@@ -246,7 +257,8 @@ class ImageSequenceService:
                     "sequence_duration_minutes": self.settings.sequence_duration_minutes,
                     "sequence_update_interval_minutes": self.settings.sequence_update_interval_minutes,
                     "max_images_per_sequence": self.settings.max_images_per_sequence
-                }
+                },
+                "vps_sync_status": self.vps_sync.get_sync_status()
             }
             
             return status

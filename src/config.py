@@ -52,9 +52,14 @@ class Settings(BaseSettings):
     log_level: str = Field(default="INFO")
     log_file: Optional[Path] = Field(default=Path("/var/log/imgserv/app.log"))
     
-    # Performance settings
-    max_concurrent_captures: int = Field(default=3)
-    image_cache_ttl_seconds: int = Field(default=300)
+    # VPS synchronization settings
+    vps_enabled: bool = Field(default=False, description="Enable VPS synchronization")
+    vps_host: str = Field(default="", description="VPS hostname or IP")
+    vps_user: str = Field(default="", description="VPS username")
+    vps_port: int = Field(default=22, description="SSH port")
+    vps_remote_path: str = Field(default="/var/www/html/monitoring", description="Remote path on VPS")
+    vps_ssh_key_path: str = Field(default="/opt/imgserv/.ssh/vps_key", description="SSH private key path")
+    vps_rsync_options: str = Field(default="-avz --delete", description="RSYNC options")
     
     @field_validator("data_dir", "images_dir", "sequences_dir", "log_file")
     @classmethod
