@@ -229,6 +229,89 @@ run_installer() {
 }
 
 # Manual service setup as fallback
+# Deploy VPS SSH key with password prompt
+deploy_vps_key() {
+    log "Deploying SSH key to VPS..."
+    
+    # Ensure sshpass is installed
+    if ! command -v sshpass &> /dev/null; then
+        log "Installing sshpass for password-based SSH..."
+        safe_apt_install sshpass 2>/dev/null || warn "Failed to install sshpass, manual key deployment required"
+        if ! command -v sshpass &> /dev/null; then
+            error "sshpass not available. Please install it manually: apt-get install sshpass"
+            return 1
+        fi
+    fi
+    
+    # Get VPS password
+    echo -n "Enter VPS password for ${VPS_USER}@${VPS_HOST}: "
+    read -s VPS_PASSWORD
+    echo ""
+    
+    if [ -z "$VPS_PASSWORD" ]; then
+        warn "Password cannot be empty, skipping VPS key deployment"
+        return 1
+    fi
+    
+    # Read public key
+    PUBLIC_KEY=$(cat /opt/imgserv/.ssh/vps_key.pub)
+    
+    # Test VPS connectivity
+    log "Testing VPS connectivity..."
+    if ! sshpass -p "$VPS_PASSWORD" ssh -p ${VPS_PORT:-22} -o StrictHostKeyChecking=no -o ConnectTimeout=10 ${VPS_USER}@${VPS_HOST} "echo 'OK'" &>/dev/null; then
+        error "Cannot connect to VPS. Please check credentials and network connectivity."
+        return 1
+    fi
+    
+    log "VPS connection successful!"
+    
+    # Deploy key to VPS
+    log "Deploying SSH key..."
+    sshpass -p "$VPS_PASSWORD" ssh -p ${VPS_PORT:-22} -o StrictHostKeyChecking=no ${VPS_USER}@${VPS_HOST} << EOF
+        # Ensure .ssh directory exists
+        mkdir -p ~/.ssh
+        chmod 700 ~/.ssh
+        
+        # Add key to authorized_keys (avoid duplicates)
+        grep -qF '$PUBLIC_KEY' ~/.ssh/authorized_keys 2>/dev/null || echo '$PUBLIC_KEY' >> ~/.ssh/authorized_keys
+        chmod 600 ~/.ssh/authorized_keys
+        
+        # Also add to imgserv user if it exists
+        if id imgserv &>/dev/null; then
+            mkdir -p /home/imgserv/.ssh
+            grep -qF '$PUBLIC_KEY' /home/imgserv/.ssh/authorized_keys 2>/dev/null || echo '$PUBLIC_KEY' >> /home/imgserv/.ssh/authorized_keys
+            chown -R imgserv:imgserv /home/imgserv/.ssh
+            chmod 700 /home/imgserv/.ssh
+            chmod 600 /home/imgserv/.ssh/authorized_keys
+        fi
+        
+        # Ensure VPS monitoring directory exists with proper permissions
+        mkdir -p /var/www/html/monitoring
+        chown -R www-data:www-data /var/www/html/monitoring
+        chmod -R 755 /var/www/html/monitoring
+        
+        echo "SSH key deployed successfully"
+EOF
+    
+    if [ $? -eq 0 ]; then
+        log "✅ SSH key deployed to VPS successfully!"
+        
+        # Test key-based authentication
+        log "Testing key-based authentication..."
+        if ssh -i /opt/imgserv/.ssh/vps_key -p ${VPS_PORT:-22} -o StrictHostKeyChecking=no -o ConnectTimeout=10 ${VPS_USER}@${VPS_HOST} "echo 'Key auth OK'" &>/dev/null; then
+            log "✅ Key-based authentication working!"
+        else
+            warn "Key-based authentication test failed, but key was deployed"
+        fi
+    else
+        error "Failed to deploy SSH key to VPS"
+        return 1
+    fi
+    
+    # Clear password from memory
+    unset VPS_PASSWORD
+}
+
 manual_service_setup() {
     log "Setting up service manually with comprehensive fixes..."
     
@@ -338,6 +421,23 @@ EOF
     cp /opt/imgserv/.ssh/vps_key.pub /root/.ssh/ 2>/dev/null || true
     chmod 600 /root/.ssh/vps_key 2>/dev/null || true
     chmod 644 /root/.ssh/vps_key.pub 2>/dev/null || true
+    
+    # Prompt to deploy SSH key to VPS
+    if [ -f /etc/imgserv/.env ] && grep -q "^VPS_ENABLED=true" /etc/imgserv/.env 2>/dev/null; then
+        source /etc/imgserv/.env
+        if [ -n "$VPS_HOST" ] && [ "$VPS_HOST" != "your-vps-server.com" ]; then
+            log "VPS configuration detected: ${VPS_USER}@${VPS_HOST}"
+            echo -n "Would you like to deploy the SSH key to your VPS now? [y/N]: "
+            read -r DEPLOY_KEY
+            
+            if [[ "$DEPLOY_KEY" =~ ^[Yy]$ ]]; then
+                deploy_vps_key
+            else
+                warn "Skipping VPS key deployment. You can deploy it later by running:"
+                warn "  ssh-copy-id -i /opt/imgserv/.ssh/vps_key ${VPS_USER}@${VPS_HOST}"
+            fi
+        fi
+    fi
     
     # Ensure imgserv can access its own directories
     chmod 755 /var/lib/imgserv
