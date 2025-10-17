@@ -231,15 +231,16 @@ class VPSSynchronizer:
 <head>
     <title>Woodland Hills City Center - Snow Load Monitoring</title>
     <meta http-equiv="refresh" content="300">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body {{
             font-family: Arial, sans-serif;
             margin: 0;
-            padding: 20px;
+            padding: 10px;
             background-color: #f0f0f0;
         }}
         .container {{
-            max-width: 1200px;
+            max-width: 100%;
             margin: 0 auto;
             background-color: white;
             border-radius: 8px;
@@ -249,20 +250,20 @@ class VPSSynchronizer:
         .header {{
             background-color: #2c3e50;
             color: white;
-            padding: 20px;
+            padding: 15px;
             text-align: center;
         }}
         .header h1 {{
             margin: 0;
-            font-size: 2em;
+            font-size: 1.5em;
         }}
         .header h2 {{
             margin: 5px 0 0 0;
-            font-size: 1.2em;
+            font-size: 1em;
             opacity: 0.9;
         }}
         .content {{
-            padding: 20px;
+            padding: 15px;
             text-align: center;
         }}
         .camera-image {{
@@ -272,13 +273,52 @@ class VPSSynchronizer:
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }}
         .info {{
-            margin-top: 20px;
+            margin-top: 15px;
             color: #666;
+            font-size: 14px;
         }}
         .refresh-info {{
-            font-size: 0.9em;
+            font-size: 12px;
             color: #888;
             margin-top: 10px;
+        }}
+        
+        /* Mobile optimizations */
+        @media (max-width: 768px) {{
+            body {{
+                padding: 5px;
+            }}
+            .header {{
+                padding: 10px;
+            }}
+            .header h1 {{
+                font-size: 1.3em;
+            }}
+            .header h2 {{
+                font-size: 0.9em;
+            }}
+            .content {{
+                padding: 10px;
+            }}
+            .info {{
+                font-size: 12px;
+            }}
+            .refresh-info {{
+                font-size: 10px;
+            }}
+        }}
+        
+        /* Very small screens */
+        @media (max-width: 480px) {{
+            .header h1 {{
+                font-size: 1.1em;
+            }}
+            .header h2 {{
+                font-size: 0.8em;
+            }}
+            .content {{
+                padding: 8px;
+            }}
         }}
     </style>
 </head>
