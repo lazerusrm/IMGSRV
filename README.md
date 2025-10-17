@@ -107,7 +107,28 @@ If you prefer manual installation:
 
 ## Configuration
 
-The service is configured via environment variables in `/etc/imgserv/.env`:
+### **Analytics Configuration Interface**
+The system includes a comprehensive web-based configuration interface:
+
+- **Configuration Page**: `http://camera-server:8080/config`
+- **Location**: Camera server only (internal network)
+- **Security**: Not exposed to public VPS
+- **Features**: Location settings, analytics options, overlay styles
+
+### **Configuration Options**:
+- **Location Settings**: Latitude/longitude, location name (default: Woodland Hills, Utah)
+- **Analytics Settings**: Enable/disable, update intervals, detection thresholds
+- **Overlay Styles**: Full, minimal, mobile, or none
+- **Warning Thresholds**: Ice temperature, hazardous snow depth
+
+### **Security Architecture**:
+- **Configuration**: Camera server only (behind firewall)
+- **Public Content**: VPS serves GIFs only (no configuration access)
+- **Access Control**: Internal network only for configuration
+- **Logging**: All configuration access logged for security
+
+### **Environment Variables**
+Create a `.env` file in `/etc/imgserv/` with your settings:
 
 ### Camera Settings
 ```bash

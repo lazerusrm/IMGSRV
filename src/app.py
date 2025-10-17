@@ -402,12 +402,21 @@ def create_app(settings: Settings) -> FastAPI:
             logger.error("Analytics history endpoint error", error=str(e))
             return {"error": "Failed to get analytics history"}
     
-    # Configuration endpoints
+    # Configuration endpoints (CAMERA SERVER ONLY - NOT EXPOSED TO VPS)
     @app.get("/config", response_class=HTMLResponse)
     @limiter.limit(f"{settings.rate_limit_per_minute}/minute")
     async def config_page(request: Request):
-        """Analytics configuration page."""
+        """
+        Analytics configuration page - CAMERA SERVER ONLY.
+        
+        SECURITY NOTE: This endpoint is only accessible on the camera server
+        (internal network) and is NOT exposed to the public VPS.
+        """
         try:
+            # Log configuration access for security monitoring
+            client_ip = request.client.host if request.client else "unknown"
+            logger.info("Configuration page accessed", client_ip=client_ip)
+            
             # Initialize config manager
             config_manager = ConfigManager(settings)
             config_data = config_manager.get_config()
@@ -426,8 +435,17 @@ def create_app(settings: Settings) -> FastAPI:
     @app.post("/config/analytics")
     @limiter.limit(f"{settings.rate_limit_per_minute}/minute")
     async def update_analytics_config(request: Request):
-        """Update analytics configuration."""
+        """
+        Update analytics configuration - CAMERA SERVER ONLY.
+        
+        SECURITY NOTE: This endpoint is only accessible on the camera server
+        (internal network) and is NOT exposed to the public VPS.
+        """
         try:
+            # Log configuration update for security monitoring
+            client_ip = request.client.host if request.client else "unknown"
+            logger.info("Configuration update attempted", client_ip=client_ip)
+            
             # Get request data
             config_data = await request.json()
             
@@ -436,6 +454,11 @@ def create_app(settings: Settings) -> FastAPI:
             
             # Update configuration
             result = config_manager.update_config(config_data)
+            
+            if result.get("status") == "success":
+                logger.info("Configuration updated successfully", client_ip=client_ip)
+            else:
+                logger.warning("Configuration update failed", client_ip=client_ip, error=result.get("message"))
             
             return result
             
