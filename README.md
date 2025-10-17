@@ -137,6 +137,102 @@ CORS_ORIGINS=*
 RATE_LIMIT_PER_MINUTE=60
 ```
 
+## VPS Deployment (Public-Facing Server)
+
+For hosting the public-facing iframe, you'll need a VPS server. The camera server generates content locally and syncs it to the VPS via RSYNC.
+
+### Recommended VPS Specifications:
+- **RAM**: 512MB minimum (1GB recommended)
+- **CPU**: 1 core minimum
+- **Storage**: 10GB minimum
+- **OS**: Ubuntu 20.04+ or Debian 11+
+- **Provider**: RackNerd, DigitalOcean, Linode, Vultr
+
+### VPS Setup Process:
+
+#### 1. Deploy VPS Server
+```bash
+# On your VPS server (run as root)
+curl -sSL https://raw.githubusercontent.com/lazerusrm/IMGSRV/main/deploy/vps-deploy.sh | bash
+```
+
+#### 2. Configure Camera Server
+Edit `/etc/imgserv/.env` on your camera server:
+```bash
+# Enable VPS synchronization
+VPS_ENABLED=true
+VPS_HOST=your-vps-server.com
+VPS_USER=imgserv
+VPS_PORT=22
+VPS_REMOTE_PATH=/var/www/html/monitoring
+VPS_SSH_KEY_PATH=/opt/imgserv/.ssh/vps_key
+VPS_RSYNC_OPTIONS=-avz --delete
+```
+
+#### 3. Setup SSH Keys
+```bash
+# On camera server - generate SSH key pair
+ssh-keygen -t rsa -b 4096 -f /opt/imgserv/.ssh/vps_key -N ""
+
+# Copy public key to VPS
+ssh-copy-id -i /opt/imgserv/.ssh/vps_key.pub imgserv@your-vps-server.com
+
+# Test connection
+ssh -i /opt/imgserv/.ssh/vps_key imgserv@your-vps-server.com "echo 'Connection successful'"
+```
+
+#### 4. Restart Camera Service
+```bash
+# Restart to apply VPS settings
+systemctl restart imgserv
+
+# Check VPS sync status
+curl http://localhost:8080/status | jq '.vps_sync_status'
+```
+
+### VPS Endpoints:
+- **Main Page**: `https://your-vps-server.com/`
+- **Iframe**: `https://your-vps-server.com/iframe`
+- **Health Check**: `https://your-vps-server.com/health`
+
+### Embedding in Web Host:
+```html
+<iframe 
+    src="https://your-vps-server.com/iframe" 
+    width="800" 
+    height="600" 
+    frameborder="0"
+    allowfullscreen>
+</iframe>
+```
+
+### Hosting Recommendations:
+
+#### ✅ **Recommended: VPS (Virtual Private Server)**
+- **RackNerd**: $3.50/month (512MB RAM, 1 CPU, 10GB SSD)
+- **DigitalOcean**: $4/month (512MB RAM, 1 CPU, 10GB SSD)
+- **Linode**: $5/month (1GB RAM, 1 CPU, 25GB SSD)
+- **Vultr**: $2.50/month (512MB RAM, 1 CPU, 10GB SSD)
+
+**Why VPS over Shared Hosting:**
+- ✅ SSH access required for RSYNC
+- ✅ Custom nginx configuration
+- ✅ File permission management
+- ✅ Dedicated resources
+- ✅ Full control over environment
+
+#### ❌ **Not Recommended: Shared Hosting (cPanel)**
+- ❌ No SSH access
+- ❌ Limited file permissions
+- ❌ Shared resources
+- ❌ Cannot install custom software
+- ❌ Restricted nginx configuration
+
+### Cost Comparison:
+- **RackNerd VPS**: ~$3.50/month
+- **Shared Hosting**: ~$3-5/month
+- **Difference**: VPS provides full control and SSH access needed for RSYNC
+
 ## Architecture
 
 ### Components
