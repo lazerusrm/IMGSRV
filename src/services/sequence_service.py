@@ -59,9 +59,12 @@ class ImageSequenceService:
         try:
             self.is_running = True
             
-            # Test camera connection
-            if not await self.camera.test_connection():
-                raise CameraError("Camera connection test failed")
+            # Test camera connection (non-blocking)
+            camera_available = await self.camera.test_connection()
+            if camera_available:
+                logger.info("Camera connection test successful")
+            else:
+                logger.warning("Camera connection test failed - service will start without camera")
             
             # Start background tasks
             self.capture_task = asyncio.create_task(self._capture_loop())
@@ -91,6 +94,9 @@ class ImageSequenceService:
     
     async def _capture_loop(self):
         """Background task for continuous image capture."""
+        consecutive_failures = 0
+        max_consecutive_failures = 5
+        
         while self.is_running:
             try:
                 # Capture snapshot
@@ -98,6 +104,9 @@ class ImageSequenceService:
                 
                 # Save image
                 await self.storage.save_image(image_data, timestamp)
+                
+                # Reset failure counter on success
+                consecutive_failures = 0
                 
                 # Check if we need to update sequence
                 await self._check_sequence_update()
@@ -109,10 +118,18 @@ class ImageSequenceService:
                 await asyncio.sleep(30)  # Capture every 30 seconds
                 
             except CameraError as e:
-                logger.warning("Camera error in capture loop", error=str(e))
-                await asyncio.sleep(60)  # Wait longer on camera errors
+                consecutive_failures += 1
+                logger.warning("Camera error in capture loop", error=str(e), failures=consecutive_failures)
+                
+                if consecutive_failures >= max_consecutive_failures:
+                    logger.error("Too many consecutive camera failures, reducing capture frequency")
+                    await asyncio.sleep(300)  # Wait 5 minutes
+                else:
+                    await asyncio.sleep(60)  # Wait 1 minute
+                    
             except Exception as e:
-                logger.error("Unexpected error in capture loop", error=str(e))
+                consecutive_failures += 1
+                logger.error("Unexpected error in capture loop", error=str(e), failures=consecutive_failures)
                 await asyncio.sleep(30)
     
     async def _check_sequence_update(self):

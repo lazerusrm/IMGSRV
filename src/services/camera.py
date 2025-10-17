@@ -101,10 +101,26 @@ class ONVIFCamera:
     async def test_connection(self) -> bool:
         """Test camera connectivity."""
         try:
-            await self.capture_snapshot()
-            logger.info("Camera connection test successful")
-            return True
-        except CameraError as e:
+            timeout = aiohttp.ClientTimeout(total=10)
+            
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(
+                    self.snapshot_url,
+                    auth=self.auth,
+                    headers={"User-Agent": "ImageSequenceServer/1.0"}
+                ) as response:
+                    
+                    if response.status == 200:
+                        # Check if we got some data (even if not a valid image)
+                        content_type = response.headers.get('content-type', '')
+                        if 'image' in content_type.lower() or len(await response.read()) > 0:
+                            logger.info("Camera connection test successful")
+                            return True
+                    
+                    logger.warning(f"Camera returned status {response.status} or invalid content")
+                    return False
+                    
+        except Exception as e:
             logger.warning("Camera connection test failed", error=str(e))
             return False
     
