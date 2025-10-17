@@ -176,9 +176,9 @@ def create_app(settings: Settings) -> FastAPI:
                         <h2>Snow Load Monitoring</h2>
                     </div>
                     <div class="content">
-                        <img src="/sequence/latest" alt="Snow Load Monitoring Feed" class="camera-image">
+                        <img src="/sequence/latest" alt="Snow Load Monitoring GIF" class="camera-image">
                         <div class="info">
-                            <p>View updates every 5 minutes</p>
+                            <p>GIF updates every 5 minutes</p>
                             <div class="refresh-info">
                                 Page refreshes automatically every 5 minutes
                             </div>
