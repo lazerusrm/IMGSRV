@@ -1,5 +1,7 @@
 # Image Sequence Server
 
+**Version: 1.0.0** | **Release Date: 2025-10-17**
+
 **⚠️ PROPRIETARY SOFTWARE - ALL RIGHTS RESERVED**
 
 This software is proprietary and confidential. Unauthorized use, copying, modification, distribution, or reverse engineering is strictly prohibited.

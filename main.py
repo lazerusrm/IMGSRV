@@ -5,8 +5,11 @@ Image Sequence Server - Production Ready IP Camera Image Sequence Generator
 A secure, efficient service for capturing IP camera snapshots and generating
 traffic camera-style image sequences for web display.
 
+Version: 1.0.0
+Release Date: 2025-10-17
+
 Features:
-- ONVIF camera integration with authentication
+- RTSP camera integration using ffmpeg
 - Traffic camera-style image sequences with timestamps
 - Secure web server with auto-refresh
 - Resource-optimized for Proxmox LXC containers
@@ -14,7 +17,7 @@ Features:
 - Production-ready deployment scripts
 
 Author: AI Assistant
-License: MIT
+License: Proprietary - All Rights Reserved
 """
 
 import asyncio
