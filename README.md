@@ -14,7 +14,7 @@ This software is licensed under a proprietary license. See [LICENSE](LICENSE) fo
 - Reverse engineer or create derivative works
 - Remove copyright notices
 
-For licensing inquiries, contact: licensing@yourdomain.com
+For licensing inquiries, contact: lazerusrm
 
 ---
 
@@ -307,7 +307,7 @@ curl https://your-server/status
 
 - **Issues**: [GitHub Issues](https://github.com/yourusername/image-sequence-server/issues)
 - **Documentation**: [Wiki](https://github.com/yourusername/image-sequence-server/wiki)
-- **Security**: Report security issues privately to security@yourdomain.com
+- **Security**: Report security issues privately to lazerusrm
 
 ## Changelog
 
