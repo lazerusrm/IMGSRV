@@ -38,9 +38,9 @@ class Settings(BaseSettings):
     image_width: int = Field(default=1920)
     image_height: int = Field(default=1080)
     image_quality: int = Field(default=85)
-    sequence_duration_minutes: int = Field(default=5)
-    sequence_update_interval_minutes: int = Field(default=5)
-    max_images_per_sequence: int = Field(default=60)
+    sequence_duration_minutes: int = Field(default=5)  # How long the sequence spans
+    sequence_update_interval_minutes: int = Field(default=5)  # How often to create new sequence
+    max_images_per_sequence: int = Field(default=10)  # Number of images in each sequence
     
     # Storage settings
     data_dir: Path = Field(default=Path("/var/lib/imgserv"))

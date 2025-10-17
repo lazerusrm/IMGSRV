@@ -115,8 +115,8 @@ class ImageSequenceService:
                 # Enforce storage limits
                 await self.storage.enforce_storage_limits()
                 
-                # Wait before next capture
-                await asyncio.sleep(30)  # Capture every 30 seconds
+                # Wait before next capture (every 30-60 seconds for 5-10 image sequence)
+                await asyncio.sleep(45)  # Capture every 45 seconds
                 
             except CameraError as e:
                 consecutive_failures += 1
