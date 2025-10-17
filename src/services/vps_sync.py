@@ -128,6 +128,44 @@ class VPSSynchronizer:
     async def _fix_vps_permissions(self):
         """Fix file permissions on VPS after sync."""
         try:
+            # Try multiple web server users in order of preference
+            web_users = ['www-data', 'nginx', 'apache', 'httpd']
+            
+            for web_user in web_users:
+                cmd = [
+                    'ssh',
+                    '-p', str(self.settings.vps_port),
+                    '-i', self.settings.vps_ssh_key_path,
+                    '-o', 'StrictHostKeyChecking=no',
+                    '-o', 'ConnectTimeout=10',
+                    f'{self.settings.vps_user}@{self.settings.vps_host}',
+                    f'id {web_user} >/dev/null 2>&1 && chown -R {web_user}:{web_user} {self.settings.vps_remote_path} && chmod -R 755 {self.settings.vps_remote_path} && echo "SUCCESS:{web_user}" || echo "FAILED:{web_user}"'
+                ]
+                
+                process = await asyncio.create_subprocess_exec(
+                    *cmd,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE
+                )
+                
+                stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=15)
+                
+                if process.returncode == 0:
+                    output = stdout.decode('utf-8').strip()
+                    if 'SUCCESS:' in output:
+                        web_user_used = output.split('SUCCESS:')[1]
+                        logger.info("VPS permissions fixed successfully", web_user=web_user_used)
+                        return
+                    else:
+                        logger.debug(f"Web user {web_user} not found, trying next")
+                        continue
+                else:
+                    error_msg = stderr.decode('utf-8') if stderr else "Unknown permission error"
+                    logger.debug(f"Failed to fix permissions with {web_user}", error=error_msg)
+                    continue
+            
+            # If all web users failed, try generic approach
+            logger.warning("All web user attempts failed, trying generic permission fix")
             cmd = [
                 'ssh',
                 '-p', str(self.settings.vps_port),
@@ -135,7 +173,7 @@ class VPSSynchronizer:
                 '-o', 'StrictHostKeyChecking=no',
                 '-o', 'ConnectTimeout=10',
                 f'{self.settings.vps_user}@{self.settings.vps_host}',
-                f'chown -R www-data:www-data {self.settings.vps_remote_path} && chmod -R 755 {self.settings.vps_remote_path}'
+                f'chmod -R 755 {self.settings.vps_remote_path} && ls -la {self.settings.vps_remote_path}'
             ]
             
             process = await asyncio.create_subprocess_exec(
@@ -147,10 +185,11 @@ class VPSSynchronizer:
             stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=15)
             
             if process.returncode == 0:
-                logger.info("VPS permissions fixed successfully")
+                logger.info("VPS permissions fixed with generic approach")
+                logger.debug("VPS directory listing", output=stdout.decode('utf-8'))
             else:
                 error_msg = stderr.decode('utf-8') if stderr else "Unknown permission error"
-                logger.warning("Failed to fix VPS permissions", error=error_msg)
+                logger.error("All VPS permission fix attempts failed", error=error_msg)
                 
         except asyncio.TimeoutError:
             logger.warning("VPS permission fix timeout")

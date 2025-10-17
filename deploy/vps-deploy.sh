@@ -57,6 +57,21 @@ install_packages() {
 setup_web_directory() {
     log "Setting up web directory structure..."
     
+    # Detect web server user
+    WEB_USER="www-data"  # Default for Debian/Ubuntu
+    if id nginx &>/dev/null; then
+        WEB_USER="nginx"
+        log "Detected nginx web server, using user: $WEB_USER"
+    elif id apache &>/dev/null; then
+        WEB_USER="apache"
+        log "Detected apache web server, using user: $WEB_USER"
+    elif id httpd &>/dev/null; then
+        WEB_USER="httpd"
+        log "Detected httpd web server, using user: $WEB_USER"
+    else
+        log "Using default web server user: $WEB_USER"
+    fi
+    
     # Create web root directory
     mkdir -p "$WEB_ROOT"
     
@@ -171,9 +186,11 @@ EOF
 </html>
 EOF
 
-    # Set proper permissions
-    chown -R www-data:www-data "$WEB_ROOT"
+    # Set proper permissions using detected web user
+    chown -R "$WEB_USER:$WEB_USER" "$WEB_ROOT"
     chmod -R 755 "$WEB_ROOT"
+    
+    log "Set ownership to $WEB_USER:$WEB_USER for web directory"
     
     # Create auto-update script for index.html
     cat > "/usr/local/bin/update-monitoring-index.sh" << 'EOF'
@@ -261,7 +278,7 @@ if [ -n "$LATEST_GIF" ]; then
 </body>
 </html>
 HTML_EOF
-    chown www-data:www-data "$WEB_ROOT/index.html"
+    chown "$WEB_USER:$WEB_USER" "$WEB_ROOT/index.html"
     chmod 644 "$WEB_ROOT/index.html"
 fi
 EOF

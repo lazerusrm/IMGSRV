@@ -230,6 +230,20 @@ run_installer() {
 
 # Manual service setup as fallback
 # Deploy VPS SSH key with password prompt
+fix_vps_permissions() {
+    log "Fixing VPS permissions..."
+    
+    # Download and run VPS permission fix script on VPS
+    ssh -i /opt/imgserv/.ssh/vps_key \
+        -o StrictHostKeyChecking=no \
+        -o ConnectTimeout=10 \
+        "${VPS_USER}@${VPS_HOST}" \
+        "curl -sSL https://raw.githubusercontent.com/lazerusrm/IMGSRV/main/deploy/vps-fix-permissions.sh | bash" \
+        2>/dev/null || warn "Failed to run VPS permission fix script"
+    
+    log "VPS permission fix completed"
+}
+
 deploy_vps_key() {
     log "Deploying SSH key to VPS..."
     
@@ -432,6 +446,18 @@ EOF
             
             if [[ "$DEPLOY_KEY" =~ ^[Yy]$ ]]; then
                 deploy_vps_key
+                
+                # Offer to fix VPS permissions
+                echo -n "Would you like to fix VPS permissions now? [y/N]: "
+                read -r FIX_PERMS
+                
+                if [[ "$FIX_PERMS" =~ ^[Yy]$ ]]; then
+                    fix_vps_permissions
+                else
+                    warn "Skipping VPS permission fix. You can fix it later by running:"
+                    warn "  curl -sSL https://raw.githubusercontent.com/lazerusrm/IMGSRV/main/deploy/vps-fix-permissions.sh | bash"
+                    warn "  (Run this command on your VPS server)"
+                fi
             else
                 warn "Skipping VPS key deployment. You can deploy it later by running:"
                 warn "  ssh-copy-id -i /opt/imgserv/.ssh/vps_key ${VPS_USER}@${VPS_HOST}"
@@ -562,6 +588,19 @@ show_completion_info() {
     echo -e "${GREEN}🚀 Your Image Sequence Server is ready!${NC}"
     echo "Visit https://localhost to see the traffic camera interface"
     echo ""
+    
+    # VPS troubleshooting info
+    if [ -f /etc/imgserv/.env ] && grep -q "^VPS_ENABLED=true" /etc/imgserv/.env 2>/dev/null; then
+        source /etc/imgserv/.env
+        if [ -n "$VPS_HOST" ] && [ "$VPS_HOST" != "your-vps-server.com" ]; then
+            echo -e "${BLUE}VPS Troubleshooting:${NC}"
+            echo "• If VPS shows 403 Forbidden errors, run this on your VPS:"
+            echo "  curl -sSL https://raw.githubusercontent.com/lazerusrm/IMGSRV/main/deploy/vps-fix-permissions.sh | bash"
+            echo "• Check VPS logs: journalctl -u nginx -f"
+            echo "• Test VPS access: curl http://${VPS_HOST}/health"
+            echo ""
+        fi
+    fi
 }
 
 # Main installation function
