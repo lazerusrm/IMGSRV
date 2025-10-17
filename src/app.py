@@ -229,6 +229,122 @@ def create_app(settings: Settings) -> FastAPI:
             logger.error("Error getting status", error=str(e))
             raise HTTPException(status_code=500, detail="Internal server error")
     
+    @app.get("/iframe", response_class=HTMLResponse)
+    @limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+    async def iframe_view(request: Request):
+        """Iframe-optimized view without headers/footers."""
+        try:
+            service = app.state.sequence_service
+            latest_sequence = await service.get_latest_sequence()
+            
+            if not latest_sequence or not latest_sequence.exists():
+                return HTMLResponse("""
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Snow Load Monitoring</title>
+                    <meta http-equiv="refresh" content="30">
+                    <style>
+                        body { 
+                            font-family: Arial, sans-serif; 
+                            text-align: center; 
+                            margin: 0; 
+                            padding: 20px;
+                            background-color: #f0f0f0;
+                        }
+                        .error { color: red; font-size: 18px; }
+                        .container {
+                            background-color: white;
+                            padding: 20px;
+                            border-radius: 8px;
+                            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <h2>Snow Load Monitoring</h2>
+                        <div class="error">No image sequence available</div>
+                        <p>Please wait for the camera to capture images...</p>
+                    </div>
+                </body>
+                </html>
+                """)
+            
+            return HTMLResponse(f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Snow Load Monitoring</title>
+                <meta http-equiv="refresh" content="300">
+                <style>
+                    body {{
+                        font-family: Arial, sans-serif;
+                        margin: 0;
+                        padding: 10px;
+                        background-color: #f0f0f0;
+                    }}
+                    .container {{
+                        background-color: white;
+                        border-radius: 8px;
+                        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                        overflow: hidden;
+                    }}
+                    .header {{
+                        background-color: #2c3e50;
+                        color: white;
+                        padding: 15px;
+                        text-align: center;
+                    }}
+                    .header h1 {{
+                        margin: 0;
+                        font-size: 1.8em;
+                        font-weight: bold;
+                    }}
+                    .header h2 {{
+                        margin: 5px 0 0 0;
+                        font-size: 1.2em;
+                        font-weight: normal;
+                        opacity: 0.9;
+                    }}
+                    .content {{
+                        padding: 15px;
+                        text-align: center;
+                    }}
+                    .camera-image {{
+                        max-width: 100%;
+                        height: auto;
+                        border: 2px solid #ddd;
+                        border-radius: 4px;
+                    }}
+                    .info {{
+                        margin-top: 15px;
+                        color: #666;
+                        font-size: 12px;
+                    }}
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>Woodland Hills City Center</h1>
+                        <h2>Snow Load Monitoring</h2>
+                    </div>
+                    <div class="content">
+                        <img src="/sequence/latest" alt="Snow Load Monitoring GIF" class="camera-image">
+                        <div class="info">
+                            <p>GIF updates every 5 minutes</p>
+                        </div>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """)
+            
+        except Exception as e:
+            logger.error("Error serving iframe view", error=str(e))
+            raise HTTPException(status_code=500, detail="Internal server error")
+    
     @app.get("/health")
     async def health_check():
         """Health check endpoint."""
