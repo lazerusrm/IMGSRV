@@ -148,7 +148,7 @@ install_dependencies() {
             safe_apt_install libssl-dev libffi-dev libjpeg-dev libpng-dev libfreetype6-dev liblcms2-dev libwebp-dev libharfbuzz-dev libfribidi-dev libxcb1-dev fonts-dejavu-core
             
             log "Installing system packages..."
-            safe_apt_install bc ufw nginx openssl systemd
+            safe_apt_install bc ufw nginx openssl systemd jq
             
             log "Installing ffmpeg for RTSP camera support..."
             safe_apt_install ffmpeg

@@ -148,7 +148,27 @@ For hosting the public-facing iframe, you'll need a VPS server. The camera serve
 - **OS**: Ubuntu 20.04+ or Debian 11+
 - **Provider**: RackNerd, DigitalOcean, Linode, Vultr
 
-### VPS Setup Process:
+### Automated VPS Setup (Recommended):
+
+#### One-Command VPS Setup:
+```bash
+# On your camera server (run as root)
+curl -sSL https://raw.githubusercontent.com/lazerusrm/IMGSRV/main/deploy/setup-vps.sh | bash -s -- <vps-ip> <vps-user> <vps-password>
+
+# Example:
+curl -sSL https://raw.githubusercontent.com/lazerusrm/IMGSRV/main/deploy/setup-vps.sh | bash -s -- 198.23.249.133 vmuser256133 MJuBUXOLQr
+```
+
+This automated script will:
+- ✅ Deploy VPS server with nginx
+- ✅ Generate SSH keys
+- ✅ Create imgserv user on VPS
+- ✅ Copy SSH keys securely
+- ✅ Configure camera server
+- ✅ Test all connections
+- ✅ Restart services
+
+### Manual VPS Setup Process:
 
 #### 1. Deploy VPS Server
 ```bash
@@ -175,7 +195,16 @@ VPS_RSYNC_OPTIONS=-avz --delete
 ssh-keygen -t rsa -b 4096 -f /opt/imgserv/.ssh/vps_key -N ""
 
 # Copy public key to VPS
-ssh-copy-id -i /opt/imgserv/.ssh/vps_key.pub imgserv@your-vps-server.com
+ssh-copy-id -i /opt/imgserv/.ssh/vps_key.pub root@your-vps-server.com
+
+# Create imgserv user on VPS and copy SSH key
+ssh root@your-vps-server.com "useradd -r -s /bin/bash -d /opt/imgserv imgserv && mkdir -p /home/imgserv/.ssh && chown -R imgserv:imgserv /home/imgserv/.ssh && chmod 700 /home/imgserv/.ssh && cp /root/.ssh/authorized_keys /home/imgserv/.ssh/authorized_keys && chown imgserv:imgserv /home/imgserv/.ssh/authorized_keys && chmod 600 /home/imgserv/.ssh/authorized_keys"
+
+# Fix permissions on camera server
+chown -R imgserv:imgserv /opt/imgserv/.ssh/
+chmod 700 /opt/imgserv/.ssh/
+chmod 600 /opt/imgserv/.ssh/vps_key
+chmod 644 /opt/imgserv/.ssh/vps_key.pub
 
 # Test connection
 ssh -i /opt/imgserv/.ssh/vps_key imgserv@your-vps-server.com "echo 'Connection successful'"
