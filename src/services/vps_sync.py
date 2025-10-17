@@ -93,6 +93,10 @@ class VPSSynchronizer:
             
             if process.returncode == 0:
                 logger.info("VPS synchronization completed successfully")
+                
+                # Fix permissions on VPS after sync
+                await self._fix_vps_permissions()
+                
                 return True
             else:
                 error_msg = stderr.decode('utf-8') if stderr else "Unknown RSYNC error"
@@ -120,6 +124,38 @@ class VPSSynchronizer:
         
         logger.debug("RSYNC command built", cmd=' '.join(cmd))
         return cmd
+    
+    async def _fix_vps_permissions(self):
+        """Fix file permissions on VPS after sync."""
+        try:
+            cmd = [
+                'ssh',
+                '-p', str(self.settings.vps_port),
+                '-i', self.settings.vps_ssh_key_path,
+                '-o', 'StrictHostKeyChecking=no',
+                '-o', 'ConnectTimeout=10',
+                f'{self.settings.vps_user}@{self.settings.vps_host}',
+                f'chown -R www-data:www-data {self.settings.vps_remote_path} && chmod -R 755 {self.settings.vps_remote_path}'
+            ]
+            
+            process = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            
+            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=15)
+            
+            if process.returncode == 0:
+                logger.info("VPS permissions fixed successfully")
+            else:
+                error_msg = stderr.decode('utf-8') if stderr else "Unknown permission error"
+                logger.warning("Failed to fix VPS permissions", error=error_msg)
+                
+        except asyncio.TimeoutError:
+            logger.warning("VPS permission fix timeout")
+        except Exception as e:
+            logger.warning("VPS permission fix error", error=str(e))
     
     async def test_connection(self) -> bool:
         """Test VPS connection."""
