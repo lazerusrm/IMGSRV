@@ -91,11 +91,14 @@ class VPSSynchronizer:
             
             stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=60)
             
-            if process.returncode == 0:
+                if process.returncode == 0:
                 logger.info("VPS synchronization completed successfully")
                 
                 # Fix permissions on VPS after sync
                 await self._fix_vps_permissions()
+                
+                # Ensure index.html exists on VPS
+                await self._ensure_index_html()
                 
                 return True
             else:
@@ -195,6 +198,145 @@ class VPSSynchronizer:
             logger.warning("VPS permission fix timeout")
         except Exception as e:
             logger.warning("VPS permission fix error", error=str(e))
+    
+    async def _ensure_index_html(self):
+        """Ensure index.html exists on VPS with latest GIF."""
+        try:
+            # Get the latest GIF filename
+            cmd = [
+                'ssh',
+                '-p', str(self.settings.vps_port),
+                '-i', self.settings.vps_ssh_key_path,
+                '-o', 'StrictHostKeyChecking=no',
+                '-o', 'ConnectTimeout=10',
+                f'{self.settings.vps_user}@{self.settings.vps_host}',
+                f'ls -t {self.settings.vps_remote_path}/sequence_*.gif 2>/dev/null | head -1 | xargs basename 2>/dev/null || echo "no_gif"'
+            ]
+            
+            process = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            
+            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=15)
+            
+            if process.returncode == 0:
+                latest_gif = stdout.decode('utf-8').strip()
+                
+                if latest_gif != "no_gif":
+                    # Create index.html with the latest GIF
+                    html_content = f'''<!DOCTYPE html>
+<html>
+<head>
+    <title>Woodland Hills City Center - Snow Load Monitoring</title>
+    <meta http-equiv="refresh" content="300">
+    <style>
+        body {{
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }}
+        .container {{
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }}
+        .header {{
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }}
+        .header h1 {{
+            margin: 0;
+            font-size: 2em;
+        }}
+        .header h2 {{
+            margin: 5px 0 0 0;
+            font-size: 1.2em;
+            opacity: 0.9;
+        }}
+        .content {{
+            padding: 20px;
+            text-align: center;
+        }}
+        .camera-image {{
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }}
+        .info {{
+            margin-top: 20px;
+            color: #666;
+        }}
+        .refresh-info {{
+            font-size: 0.9em;
+            color: #888;
+            margin-top: 10px;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Woodland Hills City Center</h1>
+            <h2>Snow Load Monitoring</h2>
+        </div>
+        <div class="content">
+            <img src="{latest_gif}" alt="Snow Load Monitoring GIF" class="camera-image">
+            <div class="info">
+                <p>GIF updates every 5 minutes</p>
+                <div class="refresh-info">
+                    Page refreshes automatically every 5 minutes
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>'''
+                    
+                    # Write index.html to VPS
+                    cmd = [
+                        'ssh',
+                        '-p', str(self.settings.vps_port),
+                        '-i', self.settings.vps_ssh_key_path,
+                        '-o', 'StrictHostKeyChecking=no',
+                        '-o', 'ConnectTimeout=10',
+                        f'{self.settings.vps_user}@{self.settings.vps_host}',
+                        f'cat > {self.settings.vps_remote_path}/index.html'
+                    ]
+                    
+                    process = await asyncio.create_subprocess_exec(
+                        *cmd,
+                        stdin=asyncio.subprocess.PIPE,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE
+                    )
+                    
+                    stdout, stderr = await asyncio.wait_for(
+                        process.communicate(input=html_content.encode('utf-8')), 
+                        timeout=15
+                    )
+                    
+                    if process.returncode == 0:
+                        logger.info("index.html updated on VPS", gif_file=latest_gif)
+                    else:
+                        logger.warning("Failed to update index.html on VPS")
+                else:
+                    logger.warning("No GIF files found on VPS to create index.html")
+            else:
+                logger.warning("Failed to get latest GIF filename from VPS")
+                
+        except asyncio.TimeoutError:
+            logger.warning("index.html update timeout")
+        except Exception as e:
+            logger.warning("index.html update error", error=str(e))
     
     async def test_connection(self) -> bool:
         """Test VPS connection."""
