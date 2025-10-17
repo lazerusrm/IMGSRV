@@ -262,9 +262,9 @@ manual_service_setup() {
     
     # Verify critical dependencies
     log "Verifying critical dependencies..."
-    python -c "import aiohttp; print('✅ aiohttp installed')" || error "aiohttp installation failed"
     python -c "import fastapi; print('✅ fastapi installed')" || error "fastapi installation failed"
     python -c "import PIL; print('✅ Pillow installed')" || error "Pillow installation failed"
+    python -c "import subprocess; subprocess.run(['ffmpeg', '-version'], capture_output=True); print('✅ ffmpeg available')" || error "ffmpeg not available"
     
     # Create basic systemd service
     cat > /etc/systemd/system/imgserv.service << 'EOF'
