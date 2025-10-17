@@ -8,6 +8,19 @@ echo "=========================================="
 echo "🛑 Stopping service..."
 systemctl stop imgserv
 
+# Verify Python version
+echo "🐍 Checking Python version..."
+python_version=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+major_version=$(echo "$python_version" | cut -d. -f1)
+minor_version=$(echo "$python_version" | cut -d. -f2)
+
+if [[ $major_version -lt 3 ]] || [[ $major_version -eq 3 && $minor_version -lt 8 ]]; then
+    echo "❌ Python 3.8 or higher is required (found $python_version)"
+    exit 1
+else
+    echo "✅ Python version $python_version is compatible"
+fi
+
 # Go to installation directory
 cd /opt/imgserv
 

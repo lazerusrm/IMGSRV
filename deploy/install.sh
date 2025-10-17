@@ -100,7 +100,10 @@ check_requirements() {
     fi
     
     local python_version=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
-    if [[ $(echo "$python_version < 3.8" | bc -l) -eq 1 ]]; then
+    local major_version=$(echo "$python_version" | cut -d. -f1)
+    local minor_version=$(echo "$python_version" | cut -d. -f2)
+    
+    if [[ $major_version -lt 3 ]] || [[ $major_version -eq 3 && $minor_version -lt 8 ]]; then
         error "Python 3.8 or higher is required (found $python_version)"
         exit 1
     fi
