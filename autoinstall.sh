@@ -264,6 +264,9 @@ manual_service_setup() {
     log "Verifying critical dependencies..."
     python -c "import fastapi; print('✅ fastapi installed')" || error "fastapi installation failed"
     python -c "import PIL; print('✅ Pillow installed')" || error "Pillow installation failed"
+    python -c "import cv2; print('✅ opencv-python installed')" || error "opencv-python installation failed"
+    python -c "import numpy; print('✅ numpy installed')" || error "numpy installation failed"
+    python -c "import aiohttp; print('✅ aiohttp installed')" || error "aiohttp installation failed"
     python -c "import subprocess; subprocess.run(['ffmpeg', '-version'], capture_output=True); print('✅ ffmpeg available')" || error "ffmpeg not available"
     
     # Verify rsync is available for VPS sync
