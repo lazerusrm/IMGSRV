@@ -53,6 +53,34 @@ check_root() {
     fi
 }
 
+# Check system requirements
+check_requirements() {
+    log "Checking system requirements..."
+    
+    # Check if running on Linux
+    if [[ "$(uname)" != "Linux" ]]; then
+        error "This script is designed for Linux systems"
+        exit 1
+    fi
+    
+    # Check Python version with proper logic
+    if ! command -v python3 &> /dev/null; then
+        error "Python 3 is required but not installed"
+        exit 1
+    fi
+    
+    local python_version=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+    local major_version=$(echo "$python_version" | cut -d. -f1)
+    local minor_version=$(echo "$python_version" | cut -d. -f2)
+    
+    if [[ $major_version -lt 3 ]] || [[ $major_version -eq 3 && $minor_version -lt 8 ]]; then
+        error "Python 3.8 or higher is required (found $python_version)"
+        exit 1
+    fi
+    
+    log "System requirements check passed (Python $python_version)"
+}
+
 # Detect OS and set package manager
 detect_os() {
     if [[ -f /etc/debian_version ]]; then
@@ -199,7 +227,7 @@ run_installer() {
 
 # Manual service setup as fallback
 manual_service_setup() {
-    log "Setting up service manually..."
+    log "Setting up service manually with comprehensive fixes..."
     
     # Create system user if it doesn't exist
     if ! id "imgserv" &>/dev/null; then
@@ -213,15 +241,27 @@ manual_service_setup() {
     # Set up Python environment properly
     log "Setting up Python virtual environment..."
     cd /opt/imgserv
+    
+    # Remove existing venv if it exists
+    rm -rf venv
+    
+    # Create new virtual environment
     python3 -m venv venv
     source venv/bin/activate
     
     # Upgrade pip first
+    log "Upgrading pip..."
     pip install --upgrade pip
     
     # Install dependencies
     log "Installing Python dependencies..."
     pip install -r requirements.txt
+    
+    # Verify critical dependencies
+    log "Verifying critical dependencies..."
+    python -c "import aiohttp; print('✅ aiohttp installed')" || error "aiohttp installation failed"
+    python -c "import fastapi; print('✅ fastapi installed')" || error "fastapi installation failed"
+    python -c "import PIL; print('✅ Pillow installed')" || error "Pillow installation failed"
     
     # Create basic systemd service
     cat > /etc/systemd/system/imgserv.service << 'EOF'
@@ -265,7 +305,7 @@ EOF
     systemctl enable imgserv
     systemctl start imgserv
     
-    log "Manual service setup completed"
+    log "Manual service setup completed with comprehensive fixes"
 }
 
 # Verify installation
@@ -364,6 +404,7 @@ main() {
     
     # Run installation steps
     check_root
+    check_requirements
     detect_os
     update_system
     install_dependencies
