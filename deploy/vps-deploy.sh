@@ -273,20 +273,47 @@ EOF
 
 # Configure nginx
 setup_nginx() {
-    log "Configuring nginx..."
+    log "Configuring nginx with HTTPS..."
     
-    # Create nginx configuration
+    # Create SSL directory and self-signed certificate
+    mkdir -p /etc/nginx/ssl
+    if [ ! -f /etc/nginx/ssl/monitoring.crt ]; then
+        log "Generating self-signed SSL certificate..."
+        openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+            -keyout /etc/nginx/ssl/monitoring.key \
+            -out /etc/nginx/ssl/monitoring.crt \
+            -subj "/C=US/ST=California/L=Woodland Hills/O=City Center/CN=monitoring" \
+            2>/dev/null || warn "SSL certificate generation failed"
+    fi
+    
+    # Create nginx configuration with HTTPS
     cat > "$NGINX_CONFIG" << EOF
+# HTTP to HTTPS redirect
 server {
     listen 80;
     server_name _;
+    return 301 https://\$host\$request_uri;
+}
+
+# HTTPS server
+server {
+    listen 443 ssl;
+    server_name _;
     root $WEB_ROOT;
     index index.html;
+    
+    # SSL configuration
+    ssl_certificate /etc/nginx/ssl/monitoring.crt;
+    ssl_certificate_key /etc/nginx/ssl/monitoring.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
     
     # Security headers
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header X-Content-Type-Options "nosniff" always;
     add_header X-XSS-Protection "1; mode=block" always;
+    add_header Strict-Transport-Security "max-age=31536000" always;
     
     # Cache static content
     location ~* \.(gif|jpg|jpeg|png|css|js)$ {

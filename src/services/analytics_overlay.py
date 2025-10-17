@@ -82,8 +82,14 @@ class AnalyticsOverlay:
             self._draw_predictions(draw, analytics_data, font_medium, font_small)
             self._draw_status(draw, analytics_data, font_medium)
             
-            # Composite overlay onto image
-            pil_image.paste(overlay_image, (0, 0), overlay_image)
+            # Position overlay in bottom-right corner
+            image_width, image_height = pil_image.size
+            overlay_width, overlay_height = overlay_image.size
+            x_position = image_width - overlay_width - 20  # 20px margin from right
+            y_position = image_height - overlay_height - 20  # 20px margin from bottom
+            
+            # Composite overlay onto image at bottom-right
+            pil_image.paste(overlay_image, (x_position, y_position), overlay_image)
             
             # Convert back to numpy array
             result_image = cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)

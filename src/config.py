@@ -56,8 +56,8 @@ class Settings(BaseSettings):
     analytics_enabled: bool = Field(default=True, description="Enable snow load analytics")
     analytics_update_interval_minutes: int = Field(default=5, description="Analytics update interval")
     weather_api_enabled: bool = Field(default=True, description="Enable weather data integration")
-    weather_latitude: float = Field(default=40.0, description="Latitude for weather data")
-    weather_longitude: float = Field(default=-111.8, description="Longitude for weather data")
+    weather_latitude: float = Field(default=34.1684, description="Latitude for weather data")
+    weather_longitude: float = Field(default=-118.6058, description="Longitude for weather data")
     analytics_overlay_enabled: bool = Field(default=True, description="Enable analytics overlays on images")
     analytics_overlay_style: str = Field(default="full", description="Overlay style: full, minimal, mobile")
     
