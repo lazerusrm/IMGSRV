@@ -210,6 +210,19 @@ manual_service_setup() {
     mkdir -p /var/lib/imgserv/images /var/lib/imgserv/sequences /var/log/imgserv
     chown -R imgserv:imgserv /var/lib/imgserv /var/log/imgserv
     
+    # Set up Python environment properly
+    log "Setting up Python virtual environment..."
+    cd /opt/imgserv
+    python3 -m venv venv
+    source venv/bin/activate
+    
+    # Upgrade pip first
+    pip install --upgrade pip
+    
+    # Install dependencies
+    log "Installing Python dependencies..."
+    pip install -r requirements.txt
+    
     # Create basic systemd service
     cat > /etc/systemd/system/imgserv.service << 'EOF'
 [Unit]
@@ -244,11 +257,8 @@ IMAGES_DIR=/var/lib/imgserv/images
 SEQUENCES_DIR=/var/lib/imgserv/sequences
 EOF
     
-    # Set up Python environment
-    cd /opt/imgserv
-    python3 -m venv venv
-    source venv/bin/activate
-    pip install -r requirements.txt
+    # Set ownership
+    chown -R imgserv:imgserv /opt/imgserv
     
     # Enable and start service
     systemctl daemon-reload
