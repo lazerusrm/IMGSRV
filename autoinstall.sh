@@ -311,6 +311,40 @@ EOF
     log "Manual service setup completed with comprehensive fixes"
 }
 
+# Restart service to ensure latest code is running
+restart_service() {
+    log "Restarting service to ensure latest code is active..."
+    
+    # Restart networkoptix-mediaserver first (it may have issues but works fine)
+    log "Restarting networkoptix-mediaserver service..."
+    if systemctl is-active --quiet networkoptix-mediaserver; then
+        systemctl restart networkoptix-mediaserver || warn "networkoptix-mediaserver restart had issues (normal)"
+    else
+        systemctl start networkoptix-mediaserver || warn "networkoptix-mediaserver start had issues (normal)"
+    fi
+    
+    # Stop imgserv service if running
+    if systemctl is-active --quiet "$SERVICE_NAME"; then
+        log "Stopping existing imgserv service..."
+        systemctl stop "$SERVICE_NAME" || warn "Failed to stop imgserv service"
+    fi
+    
+    # Start imgserv service with new code
+    log "Starting imgserv service with updated code..."
+    systemctl start "$SERVICE_NAME" || error "Failed to start imgserv service"
+    
+    # Wait for service to fully start
+    sleep 3
+    
+    # Verify imgserv service is running
+    if systemctl is-active --quiet "$SERVICE_NAME"; then
+        log "imgserv service restarted successfully with latest code"
+    else
+        error "imgserv service failed to start after restart"
+        return 1
+    fi
+}
+
 # Verify installation
 verify_installation() {
     log "Verifying installation..."
@@ -413,6 +447,7 @@ main() {
     install_dependencies
     clone_repository
     run_installer
+    restart_service
     verify_installation
     show_completion_info
 }
