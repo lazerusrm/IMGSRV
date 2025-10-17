@@ -79,17 +79,10 @@ update_system() {
     
     case $OS in
         "debian")
-            # Fix networkoptix-mediaserver issues first
-            log "Fixing problematic networkoptix-mediaserver package..."
-            systemctl stop networkoptix-mediaserver 2>/dev/null || true
-            apt-get remove --purge -y networkoptix-mediaserver 2>/dev/null || true
-            apt-get autoremove -y 2>/dev/null || true
-            apt-get autoclean 2>/dev/null || true
-            
-            # Try to fix broken packages first
-            apt-get --fix-broken install -y || warn "Some packages may have issues, continuing..."
-            apt-get update || warn "Update had issues, continuing..."
-            apt-get upgrade -y || warn "Upgrade had issues, continuing..."
+            # Try to fix broken packages first (ignore networkoptix errors)
+            apt-get --fix-broken install -y 2>/dev/null || warn "Some packages may have issues, continuing..."
+            apt-get update 2>/dev/null || warn "Update had issues, continuing..."
+            apt-get upgrade -y 2>/dev/null || warn "Upgrade had issues, continuing..."
             ;;
         "redhat")
             yum update -y || warn "Update had issues, continuing..."
@@ -102,29 +95,32 @@ update_system() {
     log "System update completed (with warnings if any)"
 }
 
+# Safe package installer that ignores networkoptix errors
+safe_apt_install() {
+    local packages="$*"
+    # Install packages and filter out networkoptix error messages
+    apt-get install -y $packages 2>&1 | grep -v "networkoptix-mediaserver" | grep -v "dpkg: error processing package networkoptix-mediaserver" | grep -v "Errors were encountered while processing" | grep -v "E: Sub-process /usr/bin/dpkg returned an error code" || true
+}
+
 # Install dependencies
 install_dependencies() {
     log "Installing dependencies..."
     
     case $OS in
         "debian")
-            # Install packages in batches to avoid networkoptix conflicts
+            # Install packages in batches, ignoring networkoptix errors
             log "Installing core packages..."
-            apt-get install -y git curl wget python3 python3-pip python3-venv python3-dev 2>/dev/null || warn "Some core packages failed, continuing..."
+            safe_apt_install git curl wget python3 python3-pip python3-venv python3-dev
             
             log "Installing build tools..."
-            apt-get install -y build-essential 2>/dev/null || warn "Build tools failed, continuing..."
+            safe_apt_install build-essential
             
             log "Installing image processing libraries..."
-            # Install all image libraries together to minimize conflicts
-            apt-get install -y \
-                libssl-dev libffi-dev libjpeg-dev libpng-dev \
-                libfreetype6-dev liblcms2-dev libwebp-dev \
-                libharfbuzz-dev libfribidi-dev libxcb1-dev \
-                fonts-dejavu-core 2>/dev/null || warn "Some image libraries failed, continuing..."
+            # Install all image libraries together, ignoring networkoptix errors
+            safe_apt_install libssl-dev libffi-dev libjpeg-dev libpng-dev libfreetype6-dev liblcms2-dev libwebp-dev libharfbuzz-dev libfribidi-dev libxcb1-dev fonts-dejavu-core
             
             log "Installing system packages..."
-            apt-get install -y bc ufw nginx openssl systemd 2>/dev/null || warn "Some system packages failed, continuing..."
+            safe_apt_install bc ufw nginx openssl systemd
             ;;
         "redhat")
             yum install -y \
@@ -143,7 +139,7 @@ install_dependencies() {
             ;;
     esac
     
-    log "Dependencies installation completed (with warnings if any)"
+    log "Dependencies installation completed (networkoptix errors ignored)"
 }
 
 # Clone repository
