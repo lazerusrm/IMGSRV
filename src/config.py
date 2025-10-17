@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     camera_username: str = Field(default="admin")
     camera_password: str = Field(default="123456")
     camera_port: int = Field(default=554)  # RTSP port
-    camera_rtsp_path: str = Field(default="/cam/realmonitor?channel=1&subtype=0")
+    camera_rtsp_path: str = Field(default="/stream0")
     camera_resolution: str = Field(default="1920x1080")
     
     # Image processing settings

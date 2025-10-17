@@ -24,7 +24,7 @@ A secure, efficient service for capturing IP camera snapshots and generating tra
 
 ## Features
 
-- **ONVIF Camera Integration**: Secure authentication and snapshot capture
+- **RTSP Camera Integration**: Secure RTSP stream capture using ffmpeg
 - **Traffic Camera Style**: Professional timestamp overlays and image sequences
 - **Security Hardened**: Rate limiting, input validation, HTTPS, and isolation
 - **Resource Optimized**: Minimal memory and CPU usage for LXC containers
@@ -112,8 +112,9 @@ The service is configured via environment variables in `/etc/imgserv/.env`:
 CAMERA_IP=192.168.1.110
 CAMERA_USERNAME=admin
 CAMERA_PASSWORD=123456
-CAMERA_PORT=80
-CAMERA_SNAPSHOT_PATH=/snapshot.cgi
+CAMERA_PORT=554
+CAMERA_RTSP_PATH=/stream0
+CAMERA_RESOLUTION=1920x1080
 ```
 
 ### Image Processing
@@ -248,7 +249,8 @@ curl https://your-server/status
 1. **Camera Connection Failed**
    ```bash
    # Test camera connectivity
-   curl -u admin:password http://192.168.1.110/snapshot.cgi
+   # Test RTSP stream access
+   ffmpeg -i rtsp://admin:123456@192.168.1.110:554/stream0 -vframes 1 -f image2 test.jpg
    
    # Check camera settings in /etc/imgserv/.env
    ```
