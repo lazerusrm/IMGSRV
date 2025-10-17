@@ -91,7 +91,7 @@ class VPSSynchronizer:
             
             stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=60)
             
-                if process.returncode == 0:
+            if process.returncode == 0:
                 logger.info("VPS synchronization completed successfully")
                 
                 # Fix permissions on VPS after sync
