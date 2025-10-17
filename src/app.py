@@ -93,7 +93,7 @@ def create_app(settings: Settings) -> FastAPI:
                 <!DOCTYPE html>
                 <html>
                 <head>
-                    <title>Traffic Camera</title>
+                    <title>Woodland Hills City Center - Snow Load Monitoring</title>
                     <meta http-equiv="refresh" content="30">
                     <style>
                         body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }

@@ -75,8 +75,11 @@ class ImageProcessor:
                 overlay = Image.new('RGBA', img.size, (0, 0, 0, 0))
                 draw = ImageDraw.Draw(overlay)
                 
-                # Format timestamp
-                time_str = timestamp.strftime("%A, %B %d, %Y  %I:%M:%S %p")
+                # Format timestamp with sanitized time (rounded to nearest 5 minutes)
+                # Round timestamp to nearest 5 minutes for security
+                rounded_minute = (timestamp.minute // 5) * 5
+                sanitized_timestamp = timestamp.replace(minute=rounded_minute, second=0, microsecond=0)
+                time_str = sanitized_timestamp.strftime("%A, %B %d, %Y  %I:%M %p")
                 
                 # Calculate text positions
                 margin = 20

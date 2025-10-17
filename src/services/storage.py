@@ -99,8 +99,8 @@ class StorageManager:
                         timestamp = datetime.fromtimestamp(file_path.stat().st_mtime)
                         images.append((file_path, timestamp))
             
-            # Sort by timestamp and limit
-            images.sort(key=lambda x: x[1], reverse=True)
+            # Sort by timestamp (oldest first) and limit
+            images.sort(key=lambda x: x[1], reverse=False)
             images = images[:max_images]
             
             logger.info("Recent images retrieved", count=len(images), minutes=minutes)
