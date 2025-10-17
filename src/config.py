@@ -52,14 +52,14 @@ class Settings(BaseSettings):
     log_level: str = Field(default="INFO")
     log_file: Optional[Path] = Field(default=Path("/var/log/imgserv/app.log"))
     
-    # VPS synchronization settings
-    vps_enabled: bool = Field(default=False, description="Enable VPS synchronization")
-    vps_host: str = Field(default="", description="VPS hostname or IP")
-    vps_user: str = Field(default="", description="VPS username")
-    vps_port: int = Field(default=22, description="SSH port")
-    vps_remote_path: str = Field(default="/var/www/html/monitoring", description="Remote path on VPS")
-    vps_ssh_key_path: str = Field(default="/opt/imgserv/.ssh/vps_key", description="SSH private key path")
-    vps_rsync_options: str = Field(default="-avz --delete", description="RSYNC options")
+    # Analytics settings
+    analytics_enabled: bool = Field(default=True, description="Enable snow load analytics")
+    analytics_update_interval_minutes: int = Field(default=5, description="Analytics update interval")
+    weather_api_enabled: bool = Field(default=True, description="Enable weather data integration")
+    weather_latitude: float = Field(default=40.0, description="Latitude for weather data")
+    weather_longitude: float = Field(default=-74.0, description="Longitude for weather data")
+    analytics_overlay_enabled: bool = Field(default=True, description="Enable analytics overlays on images")
+    analytics_overlay_style: str = Field(default="full", description="Overlay style: full, minimal, mobile")
     
     @field_validator("data_dir", "images_dir", "sequences_dir", "log_file")
     @classmethod

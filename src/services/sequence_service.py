@@ -17,6 +17,8 @@ from src.services.camera import ONVIFCamera, CameraError
 from src.services.image_processor import ImageProcessor
 from src.services.storage import StorageManager
 from src.services.vps_sync import VPSSynchronizer
+from src.services.snow_analytics import SnowAnalytics
+from src.services.analytics_overlay import AnalyticsOverlay
 
 logger = structlog.get_logger(__name__)
 
@@ -50,6 +52,10 @@ class ImageSequenceService:
         )
         
         self.vps_sync = VPSSynchronizer(settings)
+        
+        # Initialize analytics components
+        self.analytics = SnowAnalytics(settings) if settings.analytics_enabled else None
+        self.overlay = AnalyticsOverlay(settings) if settings.analytics_overlay_enabled else None
         
         # State management
         self.is_running = False
@@ -108,6 +114,19 @@ class ImageSequenceService:
                 
                 # Save image
                 await self.storage.save_image(image_data, timestamp)
+                
+                # Process analytics if enabled
+                if self.analytics:
+                    try:
+                        # Get the saved image path for analytics
+                        image_path = self.storage.get_image_path(timestamp)
+                        if image_path and image_path.exists():
+                            analytics_result = await self.analytics.analyze_image(image_path, timestamp)
+                            logger.info("Analytics processed", 
+                                       snow_coverage=analytics_result["snow_analysis"]["snow_coverage"],
+                                       road_status=analytics_result["road_status"])
+                    except Exception as e:
+                        logger.warning("Analytics processing failed", error=str(e))
                 
                 # Reset failure counter on success
                 consecutive_failures = 0
@@ -187,11 +206,24 @@ class ImageSequenceService:
             sequence_filename = f"sequence_{datetime.now().strftime('%Y%m%d_%H%M%S')}.gif"
             sequence_path = self.settings.sequences_dir / sequence_filename
             
-            # Create sequence
-            await self.image_processor.create_image_sequence(
+            # Get latest analytics data if available
+            analytics_data = None
+            if self.analytics:
+                try:
+                    analytics_summary = self.analytics.get_analytics_summary()
+                    if analytics_summary.get("status") == "active":
+                        analytics_data = analytics_summary["latest_analysis"]
+                except Exception as e:
+                    logger.warning("Failed to get analytics data for sequence", error=str(e))
+            
+            # Create sequence with analytics overlay
+            overlay_style = self.settings.analytics_overlay_style if self.settings.analytics_overlay_enabled else "none"
+            await self.image_processor.create_image_sequence_with_analytics(
                 images_with_data,
                 sequence_path,
-                duration_seconds=5
+                duration_seconds=5,
+                analytics_data=analytics_data,
+                overlay_style=overlay_style
             )
             
             # Clean up old sequences (keep only the latest 3)

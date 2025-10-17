@@ -20,6 +20,7 @@ from slowapi.util import get_remote_address
 
 from src.config import Settings
 from src.services.sequence_service import ImageSequenceService
+from src.services.snow_analytics import SnowAnalytics
 
 logger = structlog.get_logger(__name__)
 
@@ -349,5 +350,49 @@ def create_app(settings: Settings) -> FastAPI:
     async def health_check():
         """Health check endpoint."""
         return {"status": "healthy", "service": "image-sequence-server"}
+    
+    @app.get("/analytics")
+    @limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+    async def get_analytics(request: Request):
+        """Get current snow analytics data."""
+        try:
+            if not sequence_service.analytics:
+                return {"error": "Analytics not enabled"}
+            
+            analytics_summary = sequence_service.analytics.get_analytics_summary()
+            return analytics_summary
+            
+        except Exception as e:
+            logger.error("Analytics endpoint error", error=str(e))
+            return {"error": "Failed to get analytics data"}
+
+    @app.get("/analytics/history")
+    @limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+    async def get_analytics_history(request: Request, hours: int = 24):
+        """Get historical analytics data."""
+        try:
+            if not sequence_service.analytics:
+                return {"error": "Analytics not enabled"}
+            
+            # Get historical data from analytics service
+            historical_data = sequence_service.analytics.historical_data
+            
+            # Filter by time range
+            cutoff_time = datetime.now() - timedelta(hours=hours)
+            filtered_data = [
+                data for data in historical_data
+                if datetime.fromisoformat(data["timestamp"]) >= cutoff_time
+            ]
+            
+            return {
+                "status": "success",
+                "data_points": len(filtered_data),
+                "time_range_hours": hours,
+                "data": filtered_data
+            }
+            
+        except Exception as e:
+            logger.error("Analytics history endpoint error", error=str(e))
+            return {"error": "Failed to get analytics history"}
     
     return app

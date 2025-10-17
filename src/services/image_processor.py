@@ -184,6 +184,95 @@ class ImageProcessor:
             logger.error("Failed to create image sequence", error=str(e))
             raise
     
+    async def create_image_sequence_with_analytics(
+        self,
+        images: List[Tuple[bytes, datetime]],
+        output_path: Path,
+        duration_seconds: int = 5,
+        analytics_data: Optional[Dict] = None,
+        overlay_style: str = "minimal"
+    ) -> Path:
+        """
+        Create an image sequence with optional analytics overlay.
+        
+        Args:
+            images: List of (image_bytes, timestamp) tuples
+            output_path: Path to save the sequence
+            duration_seconds: Duration to display each frame
+            analytics_data: Analytics data for overlay
+            overlay_style: Style of overlay (full, minimal, mobile, none)
+            
+        Returns:
+            Path to the created sequence file
+        """
+        try:
+            if not images:
+                raise ValueError("No images provided for sequence")
+
+            frames = []
+            
+            for image_data, timestamp in images:
+                # Process image with timestamp
+                processed_image = await self.add_timestamp_overlay(image_data, timestamp)
+                
+                # Add analytics overlay if data provided
+                if analytics_data and overlay_style != "none":
+                    try:
+                        import cv2
+                        import numpy as np
+                        from src.services.analytics_overlay import AnalyticsOverlay
+                        
+                        # Convert PIL to OpenCV format
+                        pil_image = Image.open(BytesIO(processed_image))
+                        cv_image = cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)
+                        
+                        # Create overlay
+                        overlay = AnalyticsOverlay(None)  # We don't need settings for this
+                        
+                        if overlay_style == "minimal":
+                            cv_image = overlay.create_minimal_overlay(cv_image, analytics_data)
+                        else:
+                            cv_image = overlay.create_analytics_overlay(cv_image, analytics_data)
+                        
+                        # Convert back to PIL
+                        processed_image = cv2.imencode('.jpg', cv_image)[1].tobytes()
+                        
+                    except Exception as e:
+                        logger.warning("Analytics overlay failed", error=str(e))
+                        # Continue without overlay
+                
+                # Convert to PIL Image
+                frame = Image.open(BytesIO(processed_image))
+                frames.append(frame)
+            
+            if frames:
+                # Calculate frame duration for 1 FPS (1000ms per frame)
+                frame_duration = 1000  # 1 second per frame for 1 FPS
+                
+                # Save as animated GIF
+                frames[0].save(
+                    output_path,
+                    save_all=True,
+                    append_images=frames[1:],
+                    duration=frame_duration,
+                    loop=0,
+                    optimize=True
+                )
+                
+                logger.info(
+                    "Image sequence with analytics created",
+                    frames=len(frames),
+                    duration_ms=frame_duration,
+                    output_path=str(output_path),
+                    overlay_style=overlay_style
+                )
+            
+            return output_path
+            
+        except Exception as e:
+            logger.error("Failed to create image sequence with analytics", error=str(e))
+            raise
+    
     async def cleanup_old_images(
         self,
         images_dir: Path,
