@@ -1,6 +1,6 @@
 # Image Sequence Server
 
-**Version: 1.0.0** | **Release Date: 2025-10-17**
+**Version: 1.1.0** | **Release Date: 2025-10-17**
 
 **⚠️ PROPRIETARY SOFTWARE - ALL RIGHTS RESERVED**
 

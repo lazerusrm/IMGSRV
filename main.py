@@ -5,7 +5,7 @@ Image Sequence Server - Production Ready IP Camera Image Sequence Generator
 A secure, efficient service for capturing IP camera snapshots and generating
 traffic camera-style image sequences for web display.
 
-Version: 1.0.0
+Version: 1.1.0
 Release Date: 2025-10-17
 
 Features:
