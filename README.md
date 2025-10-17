@@ -36,7 +36,7 @@ A secure, efficient service for capturing IP camera snapshots and generating tra
 
 ### 🚀 One-Command Installation (Linux)
 
-**Super Robust Installation (Recommended):**
+**Single Universal Installer (Handles all cases including package conflicts):**
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/lazerusrm/IMGSRV/main/autoinstall.sh | bash

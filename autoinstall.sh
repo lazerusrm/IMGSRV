@@ -79,6 +79,13 @@ update_system() {
     
     case $OS in
         "debian")
+            # Fix networkoptix-mediaserver issues first
+            log "Fixing problematic networkoptix-mediaserver package..."
+            systemctl stop networkoptix-mediaserver 2>/dev/null || true
+            apt-get remove --purge -y networkoptix-mediaserver 2>/dev/null || true
+            apt-get autoremove -y 2>/dev/null || true
+            apt-get autoclean 2>/dev/null || true
+            
             # Try to fix broken packages first
             apt-get --fix-broken install -y || warn "Some packages may have issues, continuing..."
             apt-get update || warn "Update had issues, continuing..."
@@ -101,19 +108,23 @@ install_dependencies() {
     
     case $OS in
         "debian")
-            # Install packages individually to handle failures gracefully
-            local packages=(
-                "git" "curl" "wget" "python3" "python3-pip" "python3-venv" "python3-dev"
-                "build-essential" "libssl-dev" "libffi-dev" "libjpeg-dev" "libpng-dev"
-                "libfreetype6-dev" "liblcms2-dev" "libwebp-dev" "libharfbuzz-dev"
-                "libfribidi-dev" "libxcb1-dev" "fonts-dejavu-core" "bc" "ufw"
-                "nginx" "openssl" "systemd"
-            )
+            # Install packages in batches to avoid networkoptix conflicts
+            log "Installing core packages..."
+            apt-get install -y git curl wget python3 python3-pip python3-venv python3-dev 2>/dev/null || warn "Some core packages failed, continuing..."
             
-            for package in "${packages[@]}"; do
-                log "Installing $package..."
-                apt-get install -y "$package" || warn "Failed to install $package, continuing..."
-            done
+            log "Installing build tools..."
+            apt-get install -y build-essential 2>/dev/null || warn "Build tools failed, continuing..."
+            
+            log "Installing image processing libraries..."
+            # Install all image libraries together to minimize conflicts
+            apt-get install -y \
+                libssl-dev libffi-dev libjpeg-dev libpng-dev \
+                libfreetype6-dev liblcms2-dev libwebp-dev \
+                libharfbuzz-dev libfribidi-dev libxcb1-dev \
+                fonts-dejavu-core 2>/dev/null || warn "Some image libraries failed, continuing..."
+            
+            log "Installing system packages..."
+            apt-get install -y bc ufw nginx openssl systemd 2>/dev/null || warn "Some system packages failed, continuing..."
             ;;
         "redhat")
             yum install -y \
