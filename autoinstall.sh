@@ -318,6 +318,24 @@ EOF
     chown -R imgserv:imgserv /opt/imgserv/.ssh
     chmod 700 /opt/imgserv/.ssh
     
+    # Generate SSH key if it doesn't exist (preserve existing keys)
+    if [[ ! -f /opt/imgserv/.ssh/vps_key ]]; then
+        log "Generating SSH key pair for VPS sync..."
+        ssh-keygen -t rsa -b 4096 -f /opt/imgserv/.ssh/vps_key -N ""
+        chown imgserv:imgserv /opt/imgserv/.ssh/vps_key*
+        chmod 600 /opt/imgserv/.ssh/vps_key
+        chmod 644 /opt/imgserv/.ssh/vps_key.pub
+        log "SSH key pair generated for VPS sync"
+    else
+        log "SSH key pair already exists, preserving existing keys"
+    fi
+    
+    # Copy SSH key to root directory for service access
+    cp /opt/imgserv/.ssh/vps_key /root/.ssh/ 2>/dev/null || true
+    cp /opt/imgserv/.ssh/vps_key.pub /root/.ssh/ 2>/dev/null || true
+    chmod 600 /root/.ssh/vps_key 2>/dev/null || true
+    chmod 644 /root/.ssh/vps_key.pub 2>/dev/null || true
+    
     # Ensure imgserv can access its own directories
     chmod 755 /var/lib/imgserv
     chmod 755 /var/lib/imgserv/images

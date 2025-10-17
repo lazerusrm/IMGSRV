@@ -138,12 +138,19 @@ copy_ssh_key() {
     
     # Copy key to VPS using sshpass (to root user for easier management)
     sshpass -p "$VPS_PASSWORD" ssh -o StrictHostKeyChecking=no "$VPS_USER@$VPS_IP" "
+        # Ensure root SSH directory exists
+        mkdir -p /root/.ssh
+        chmod 700 /root/.ssh
+        
         # Add key to root's authorized_keys for VPS sync
         echo '$PUBLIC_KEY' >> /root/.ssh/authorized_keys
         chmod 600 /root/.ssh/authorized_keys
         
         # Also add to imgserv user if it exists
         if id imgserv &>/dev/null; then
+            mkdir -p /home/imgserv/.ssh
+            chown -R imgserv:imgserv /home/imgserv/.ssh
+            chmod 700 /home/imgserv/.ssh
             echo '$PUBLIC_KEY' >> /home/imgserv/.ssh/authorized_keys
             chown imgserv:imgserv /home/imgserv/.ssh/authorized_keys
             chmod 600 /home/imgserv/.ssh/authorized_keys
@@ -213,6 +220,10 @@ restart_and_test() {
     else
         warn "VPS sync may not be working properly"
     fi
+    
+    # Test VPS auto-update script
+    log "Testing VPS auto-update script..."
+    ssh -i /opt/imgserv/.ssh/vps_key root@$VPS_IP "/usr/local/bin/update-monitoring-index.sh" || warn "VPS auto-update script test failed"
 }
 
 # Show completion info
