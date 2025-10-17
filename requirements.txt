@@ -1,0 +1,33 @@
+# Core web framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+slowapi==0.1.9
+
+# Image processing
+Pillow==10.1.0
+opencv-python==4.8.1.78
+
+# Camera integration
+onvif-zeep==0.2.12
+requests==2.31.0
+
+# Security and validation
+pydantic==2.5.0
+pydantic-settings==2.1.0
+python-multipart==0.0.6
+cryptography==41.0.8
+
+# Async utilities
+aiofiles==23.2.1
+asyncio-mqtt==0.16.1
+
+# Monitoring and logging
+structlog==23.2.0
+prometheus-client==0.19.0
+
+# Development and testing
+pytest==7.4.3
+pytest-asyncio==0.21.1
+black==23.11.0
+flake8==6.1.0
+mypy==1.7.1
