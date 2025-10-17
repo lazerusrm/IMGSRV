@@ -68,6 +68,29 @@ class StorageManager:
             logger.error("Failed to save image", error=str(e))
             raise
     
+    def get_image_path(self, timestamp: datetime, prefix: str = "snapshot") -> Optional[Path]:
+        """
+        Get the path for an image with the given timestamp.
+        
+        Args:
+            timestamp: Image timestamp
+            prefix: Filename prefix
+            
+        Returns:
+            Path to the image file, or None if not found
+        """
+        try:
+            filename = f"{prefix}_{timestamp.strftime('%Y%m%d_%H%M%S')}.jpg"
+            file_path = self.images_dir / filename
+            
+            if file_path.exists():
+                return file_path
+            return None
+            
+        except Exception as e:
+            logger.warning("Failed to get image path", error=str(e))
+            return None
+    
     async def get_recent_images(
         self,
         minutes: int = 5,
