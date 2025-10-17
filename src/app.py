@@ -21,6 +21,8 @@ from slowapi.util import get_remote_address
 from src.config import Settings
 from src.services.sequence_service import ImageSequenceService
 from src.services.snow_analytics import SnowAnalytics
+from src.services.config_manager import ConfigManager
+from src.templates.config_page import create_config_page_html
 
 logger = structlog.get_logger(__name__)
 
@@ -178,12 +180,17 @@ def create_app(settings: Settings) -> FastAPI:
                     </div>
                     <div class="content">
                         <img src="/sequence/latest" alt="Snow Load Monitoring GIF" class="camera-image">
-                        <div class="info">
-                            <p>GIF updates every 5 minutes</p>
-                            <div class="refresh-info">
-                                Page refreshes automatically every 5 minutes
-                            </div>
-                        </div>
+            <div class="info">
+                <p>GIF updates every 5 minutes</p>
+                <div class="refresh-info">
+                    Page refreshes automatically every 5 minutes
+                </div>
+                <div class="config-link">
+                    <a href="/config" style="color: #3498db; text-decoration: none; font-size: 0.9em;">
+                        ⚙️ Configure Analytics Settings
+                    </a>
+                </div>
+            </div>
                     </div>
                 </div>
             </body>
@@ -394,5 +401,90 @@ def create_app(settings: Settings) -> FastAPI:
         except Exception as e:
             logger.error("Analytics history endpoint error", error=str(e))
             return {"error": "Failed to get analytics history"}
+    
+    # Configuration endpoints
+    @app.get("/config", response_class=HTMLResponse)
+    @limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+    async def config_page(request: Request):
+        """Analytics configuration page."""
+        try:
+            # Initialize config manager
+            config_manager = ConfigManager(settings)
+            config_data = config_manager.get_config()
+            
+            # Generate HTML page
+            html_content = create_config_page_html(config_data)
+            return HTMLResponse(content=html_content)
+            
+        except Exception as e:
+            logger.error("Configuration page error", error=str(e))
+            return HTMLResponse(
+                content="<h1>Configuration Error</h1><p>Failed to load configuration page.</p>",
+                status_code=500
+            )
+    
+    @app.post("/config/analytics")
+    @limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+    async def update_analytics_config(request: Request):
+        """Update analytics configuration."""
+        try:
+            # Get request data
+            config_data = await request.json()
+            
+            # Initialize config manager
+            config_manager = ConfigManager(settings)
+            
+            # Update configuration
+            result = config_manager.update_config(config_data)
+            
+            return result
+            
+        except Exception as e:
+            logger.error("Configuration update error", error=str(e))
+            return {
+                "status": "error",
+                "message": f"Update failed: {str(e)}"
+            }
+    
+    @app.post("/config/analytics/reset")
+    @limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+    async def reset_analytics_config(request: Request):
+        """Reset analytics configuration to defaults."""
+        try:
+            # Initialize config manager
+            config_manager = ConfigManager(settings)
+            
+            # Reset configuration
+            result = config_manager.reset_to_defaults()
+            
+            return result
+            
+        except Exception as e:
+            logger.error("Configuration reset error", error=str(e))
+            return {
+                "status": "error",
+                "message": f"Reset failed: {str(e)}"
+            }
+    
+    @app.get("/config/analytics")
+    @limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+    async def get_analytics_config(request: Request):
+        """Get current analytics configuration."""
+        try:
+            # Initialize config manager
+            config_manager = ConfigManager(settings)
+            config_data = config_manager.get_config()
+            
+            return {
+                "status": "success",
+                "config": config_data
+            }
+            
+        except Exception as e:
+            logger.error("Configuration get error", error=str(e))
+            return {
+                "status": "error",
+                "message": f"Failed to get configuration: {str(e)}"
+            }
     
     return app
