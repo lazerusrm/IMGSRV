@@ -101,7 +101,8 @@ def create_app(settings: Settings) -> FastAPI:
                     </style>
                 </head>
                 <body>
-                    <h1>Traffic Camera</h1>
+                    <h1>Woodland Hills City Center</h1>
+                    <h2>Snow Load Monitoring</h2>
                     <div class="error">No image sequence available</div>
                     <p>Please wait for the camera to capture images...</p>
                 </body>
@@ -112,7 +113,7 @@ def create_app(settings: Settings) -> FastAPI:
             <!DOCTYPE html>
             <html>
             <head>
-                <title>Traffic Camera - Live View</title>
+                <title>Woodland Hills City Center - Snow Load Monitoring</title>
                 <meta http-equiv="refresh" content="300">
                 <style>
                     body {{
@@ -134,6 +135,17 @@ def create_app(settings: Settings) -> FastAPI:
                         color: white;
                         padding: 20px;
                         text-align: center;
+                    }}
+                    .header h1 {{
+                        margin: 0;
+                        font-size: 2.5em;
+                        font-weight: bold;
+                    }}
+                    .header h2 {{
+                        margin: 10px 0 0 0;
+                        font-size: 1.5em;
+                        font-weight: normal;
+                        opacity: 0.9;
                     }}
                     .content {{
                         padding: 20px;
@@ -160,11 +172,11 @@ def create_app(settings: Settings) -> FastAPI:
             <body>
                 <div class="container">
                     <div class="header">
-                        <h1>Traffic Camera - Live View</h1>
-                        <p>Real-time traffic monitoring</p>
+                        <h1>Woodland Hills City Center</h1>
+                        <h2>Snow Load Monitoring</h2>
                     </div>
                     <div class="content">
-                        <img src="/sequence/latest" alt="Traffic Camera Feed" class="camera-image">
+                        <img src="/sequence/latest" alt="Snow Load Monitoring Feed" class="camera-image">
                         <div class="info">
                             <p>This image sequence updates every 5 minutes</p>
                             <div class="refresh-info">

@@ -48,7 +48,7 @@ class ImageProcessor:
         self,
         image_data: bytes,
         timestamp: datetime,
-        location: str = "Traffic Camera"
+        location: str = "Woodland Hills City Center"
     ) -> bytes:
         """
         Add traffic camera-style timestamp overlay to image.
@@ -155,9 +155,8 @@ class ImageProcessor:
                     frames.append(img.copy())
             
             if frames:
-                # Calculate frame duration
-                frame_duration = int(duration_seconds * 1000 / len(frames))
-                frame_duration = max(100, min(2000, frame_duration))  # Clamp between 100ms and 2s
+                # Calculate frame duration for 1 FPS (1000ms per frame)
+                frame_duration = 1000  # 1 second per frame for 1 FPS
                 
                 # Save as animated GIF
                 frames[0].save(
