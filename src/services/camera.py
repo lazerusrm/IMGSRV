@@ -1,18 +1,18 @@
 """
-ONVIF camera integration for Image Sequence Server.
+RTSP camera integration for Image Sequence Server using ffmpeg.
 
-Handles camera authentication, snapshot capture, and error handling.
+Handles RTSP stream capture, frame extraction, and error handling.
 """
 
 import asyncio
-import logging
+import subprocess
+import tempfile
+import os
 from datetime import datetime
-from io import BytesIO
-from typing import Optional, Tuple
-
-import aiohttp
+from typing import Tuple, Optional
 import structlog
 from PIL import Image
+from io import BytesIO
 
 logger = structlog.get_logger(__name__)
 
@@ -22,33 +22,33 @@ class CameraError(Exception):
     pass
 
 
-class ONVIFCamera:
-    """ONVIF camera client with snapshot capabilities."""
+class RTSPCamera:
+    """RTSP camera client using ffmpeg for frame capture."""
     
     def __init__(
         self,
         ip: str,
         username: str,
         password: str,
-        port: int = 80,
-        snapshot_path: str = "/snapshot.cgi"
+        port: int = 554,
+        rtsp_path: str = "/cam/realmonitor?channel=1&subtype=0",
+        resolution: str = "1920x1080"
     ):
         self.ip = ip
         self.username = username
         self.password = password
         self.port = port
-        self.snapshot_path = snapshot_path
-        self.base_url = f"http://{ip}:{port}"
-        self.snapshot_url = f"{self.base_url}{snapshot_path}"
+        self.rtsp_path = rtsp_path
+        self.resolution = resolution
         
-        # Create auth object
-        self.auth = aiohttp.BasicAuth(username, password)
+        # Build RTSP URL
+        self.rtsp_url = f"rtsp://{username}:{password}@{ip}:{port}{rtsp_path}"
         
-        logger.info("Camera initialized", ip=ip, port=port, path=snapshot_path)
+        logger.info("RTSP camera initialized", ip=ip, port=port, path=rtsp_path)
     
     async def capture_snapshot(self) -> Tuple[bytes, datetime]:
         """
-        Capture a snapshot from the camera.
+        Capture a snapshot from the RTSP stream using ffmpeg.
         
         Returns:
             Tuple of (image_bytes, capture_timestamp)
@@ -57,71 +57,114 @@ class ONVIFCamera:
             CameraError: If snapshot capture fails
         """
         try:
-            timeout = aiohttp.ClientTimeout(total=30)
+            # Create temporary file for the image
+            with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as temp_file:
+                temp_path = temp_file.name
             
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(
-                    self.snapshot_url,
-                    auth=self.auth,
-                    headers={"User-Agent": "ImageSequenceServer/1.0"}
-                ) as response:
-                    
-                    if response.status != 200:
-                        raise CameraError(f"Camera returned status {response.status}")
-                    
-                    image_data = await response.read()
-                    
-                    if not image_data:
-                        raise CameraError("Empty image data received")
-                    
-                    # Validate image
-                    try:
-                        with Image.open(BytesIO(image_data)) as img:
-                            img.verify()
-                    except Exception as e:
-                        raise CameraError(f"Invalid image data: {e}")
-                    
-                    capture_time = datetime.now()
-                    
-                    logger.info(
-                        "Snapshot captured",
-                        size_bytes=len(image_data),
-                        timestamp=capture_time.isoformat()
-                    )
-                    
-                    return image_data, capture_time
-                    
-        except aiohttp.ClientError as e:
-            raise CameraError(f"Network error: {e}")
+            # Build ffmpeg command
+            cmd = [
+                'ffmpeg',
+                '-y',  # Overwrite output file
+                '-rtsp_transport', 'tcp',  # Use TCP for reliability
+                '-i', self.rtsp_url,
+                '-vframes', '1',  # Capture only 1 frame
+                '-q:v', '2',  # High quality
+                '-s', self.resolution,  # Set resolution
+                '-f', 'image2',  # Output format
+                temp_path
+            ]
+            
+            # Run ffmpeg command
+            process = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            
+            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=30)
+            
+            if process.returncode != 0:
+                error_msg = stderr.decode('utf-8') if stderr else "Unknown ffmpeg error"
+                raise CameraError(f"ffmpeg failed: {error_msg}")
+            
+            # Read the captured image
+            if not os.path.exists(temp_path) or os.path.getsize(temp_path) == 0:
+                raise CameraError("No image data captured")
+            
+            with open(temp_path, 'rb') as f:
+                image_data = f.read()
+            
+            # Validate image
+            try:
+                with Image.open(BytesIO(image_data)) as img:
+                    img.verify()
+            except Exception as e:
+                raise CameraError(f"Invalid image data: {e}")
+            
+            capture_time = datetime.now()
+            
+            logger.info(
+                "RTSP snapshot captured",
+                size_bytes=len(image_data),
+                timestamp=capture_time.isoformat()
+            )
+            
+            return image_data, capture_time
+            
         except asyncio.TimeoutError:
-            raise CameraError("Camera timeout")
+            raise CameraError("ffmpeg timeout")
+        except FileNotFoundError:
+            raise CameraError("ffmpeg not found - please install ffmpeg")
         except Exception as e:
             raise CameraError(f"Unexpected error: {e}")
+        finally:
+            # Clean up temporary file
+            try:
+                if 'temp_path' in locals() and os.path.exists(temp_path):
+                    os.unlink(temp_path)
+            except Exception:
+                pass  # Ignore cleanup errors
     
     async def test_connection(self) -> bool:
-        """Test camera connectivity."""
+        """Test RTSP stream connectivity."""
         try:
-            timeout = aiohttp.ClientTimeout(total=10)
+            # Test with a very short timeout and single frame
+            cmd = [
+                'ffmpeg',
+                '-y',
+                '-rtsp_transport', 'tcp',
+                '-i', self.rtsp_url,
+                '-vframes', '1',
+                '-t', '5',  # 5 second timeout
+                '-f', 'null',  # Don't save output
+                '-'
+            ]
             
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(
-                    self.snapshot_url,
-                    auth=self.auth,
-                    headers={"User-Agent": "ImageSequenceServer/1.0"}
-                ) as response:
-                    
-                    if response.status == 200:
-                        # Check if we got some data (even if not a valid image)
-                        content_type = response.headers.get('content-type', '')
-                        if 'image' in content_type.lower() or len(await response.read()) > 0:
-                            logger.info("Camera connection test successful")
-                            return True
-                    
-                    logger.warning(f"Camera returned status {response.status} or invalid content")
-                    return False
-                    
+            process = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            
+            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=10)
+            
+            if process.returncode == 0:
+                logger.info("RTSP connection test successful")
+                return True
+            else:
+                logger.warning("RTSP connection test failed", 
+                             returncode=process.returncode,
+                             stderr=stderr.decode('utf-8') if stderr else "")
+                return False
+                
+        except asyncio.TimeoutError:
+            logger.warning("RTSP connection test timeout")
+            return False
+        except FileNotFoundError:
+            logger.warning("ffmpeg not found for connection test")
+            return False
         except Exception as e:
-            logger.warning("Camera connection test failed", error=str(e))
+            logger.warning("RTSP connection test failed", error=str(e))
             return False
     
     def get_camera_info(self) -> dict:
@@ -129,7 +172,12 @@ class ONVIFCamera:
         return {
             "ip": self.ip,
             "port": self.port,
-            "snapshot_url": self.snapshot_url,
+            "rtsp_url": f"rtsp://{self.username}:***@{self.ip}:{self.port}{self.rtsp_path}",
             "username": self.username,
-            # Don't log password for security
+            "resolution": self.resolution,
+            "method": "rtsp_ffmpeg"
         }
+
+
+# Backward compatibility alias
+ONVIFCamera = RTSPCamera

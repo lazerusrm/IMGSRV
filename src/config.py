@@ -26,12 +26,13 @@ class Settings(BaseSettings):
     cors_origins: List[str] = Field(default=["*"])
     rate_limit_per_minute: int = Field(default=60)
     
-    # Camera configuration
+    # Camera configuration (RTSP)
     camera_ip: str = Field(default="192.168.1.110")
     camera_username: str = Field(default="admin")
     camera_password: str = Field(default="123456")
-    camera_port: int = Field(default=80)
-    camera_snapshot_path: str = Field(default="/snapshot.cgi")
+    camera_port: int = Field(default=554)  # RTSP port
+    camera_rtsp_path: str = Field(default="/cam/realmonitor?channel=1&subtype=0")
+    camera_resolution: str = Field(default="1920x1080")
     
     # Image processing settings
     image_width: int = Field(default=1920)

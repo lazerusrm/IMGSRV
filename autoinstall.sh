@@ -149,20 +149,23 @@ install_dependencies() {
             
             log "Installing system packages..."
             safe_apt_install bc ufw nginx openssl systemd
+            
+            log "Installing ffmpeg for RTSP camera support..."
+            safe_apt_install ffmpeg
             ;;
         "redhat")
             yum install -y \
                 git curl wget python3 python3-pip python3-devel gcc gcc-c++ make \
                 openssl-devel libffi-devel libjpeg-devel libpng-devel freetype-devel \
                 lcms2-devel libwebp-devel harfbuzz-devel fribidi-devel libxcb-devel \
-                dejavu-fonts-common dejavu-sans-fonts bc firewalld nginx openssl systemd \
+                dejavu-fonts-common dejavu-sans-fonts bc firewalld nginx openssl systemd ffmpeg \
                 || warn "Some packages failed to install, continuing..."
             ;;
         "arch")
             pacman -S --noconfirm \
                 git curl wget python python-pip python-virtualenv base-devel \
                 openssl libffi libjpeg-turbo libpng freetype2 lcms2 libwebp \
-                harfbuzz fribidi libxcb ttf-dejavu bc ufw nginx openssl systemd \
+                harfbuzz fribidi libxcb ttf-dejavu bc ufw nginx openssl systemd ffmpeg \
                 || warn "Some packages failed to install, continuing..."
             ;;
     esac

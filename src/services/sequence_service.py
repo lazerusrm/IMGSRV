@@ -32,7 +32,8 @@ class ImageSequenceService:
             username=settings.camera_username,
             password=settings.camera_password,
             port=settings.camera_port,
-            snapshot_path=settings.camera_snapshot_path
+            rtsp_path=settings.camera_rtsp_path,
+            resolution=settings.camera_resolution
         )
         
         self.image_processor = ImageProcessor(
