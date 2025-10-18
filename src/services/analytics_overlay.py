@@ -26,9 +26,9 @@ class AnalyticsOverlay:
         
         # Overlay configuration
         self.overlay_config = {
-            "font_size_large": 48,  # Doubled from 24
-            "font_size_medium": 36,  # Doubled from 18
-            "font_size_small": 28,  # Doubled from 14
+            "font_size_large": 32,  # Reduced from 48
+            "font_size_medium": 24,  # Reduced from 36
+            "font_size_small": 18,  # Reduced from 28
             "padding": 15,
             "corner_radius": 8,
             "opacity": 0.85,
@@ -104,9 +104,9 @@ class AnalyticsOverlay:
         """Create semi-transparent overlay background."""
         width, height = image_size
         
-        # Create overlay positioned in top-right corner
-        overlay_width = min(350, width // 3)
-        overlay_height = min(400, height // 2)
+        # Create larger overlay positioned in bottom-right corner
+        overlay_width = min(450, width // 2.5)  # Increased from 350, width//3
+        overlay_height = min(500, height // 1.8)  # Increased from 400, height//2
         
         overlay = Image.new('RGBA', (overlay_width, overlay_height), (0, 0, 0, 0))
         
@@ -139,19 +139,19 @@ class AnalyticsOverlay:
             subheader_text = f"Snow Load Monitoring"
             time_text = f"{formatted_time}"
             
-            # Draw header
-            y_pos = 15
-            draw.text((15, y_pos), header_text, 
+            # Draw header with better spacing
+            y_pos = 20
+            draw.text((20, y_pos), header_text, 
                      font=font_large, 
                      fill=self.overlay_config["colors"]["text_primary"])
             
-            y_pos += 60
-            draw.text((15, y_pos), subheader_text, 
+            y_pos += 40  # Increased spacing
+            draw.text((20, y_pos), subheader_text, 
                      font=font_large, 
                      fill=self.overlay_config["colors"]["info"])
             
-            y_pos += 60
-            draw.text((15, y_pos), time_text, 
+            y_pos += 40  # Increased spacing
+            draw.text((20, y_pos), time_text, 
                      font=font_large, 
                      fill=self.overlay_config["colors"]["text_secondary"])
             
@@ -166,26 +166,26 @@ class AnalyticsOverlay:
             snow_depth = snow_analysis.get("snow_depth_inches", 0.0)
             confidence = snow_analysis.get("confidence", 0.0)
             
-            y_pos = 100
+            y_pos = 120  # Start after header section
             
             # Snow coverage
             coverage_text = f"Snow Coverage: {snow_coverage:.1%}"
-            draw.text((15, y_pos), coverage_text, 
+            draw.text((20, y_pos), coverage_text, 
                      font=font_medium, 
                      fill=self.overlay_config["colors"]["text_primary"])
             
             # Snow depth
-            y_pos += 25
+            y_pos += 35  # Increased spacing
             depth_text = f"Snow Depth: {snow_depth:.1f}\""
-            draw.text((15, y_pos), depth_text, 
+            draw.text((20, y_pos), depth_text, 
                      font=font_medium, 
                      fill=self.overlay_config["colors"]["text_primary"])
             
             # Confidence
-            y_pos += 25
+            y_pos += 35  # Increased spacing
             conf_text = f"Confidence: {confidence:.1%}"
             conf_color = self.overlay_config["colors"]["success"] if confidence > 0.7 else self.overlay_config["colors"]["warning"]
-            draw.text((15, y_pos), conf_text, 
+            draw.text((20, y_pos), conf_text, 
                      font=font_small, 
                      fill=conf_color)
             
@@ -200,26 +200,26 @@ class AnalyticsOverlay:
             conditions = weather_data.get("conditions", "Unknown")
             humidity = weather_data.get("humidity", 50)
             
-            y_pos = 180
+            y_pos = 220  # Start after snow data section
             
             # Temperature
             temp_text = f"Temperature: {temperature}°F"
             temp_color = self.overlay_config["colors"]["danger"] if temperature < 32 else self.overlay_config["colors"]["info"]
-            draw.text((15, y_pos), temp_text, 
+            draw.text((20, y_pos), temp_text, 
                      font=font_medium, 
                      fill=temp_color)
             
             # Conditions
-            y_pos += 25
+            y_pos += 35  # Increased spacing
             cond_text = f"Conditions: {conditions}"
-            draw.text((15, y_pos), cond_text, 
+            draw.text((20, y_pos), cond_text, 
                      font=font_small, 
                      fill=self.overlay_config["colors"]["text_secondary"])
             
             # Humidity
-            y_pos += 20
+            y_pos += 30  # Increased spacing
             hum_text = f"Humidity: {humidity}%"
-            draw.text((15, y_pos), hum_text, 
+            draw.text((20, y_pos), hum_text, 
                      font=font_small, 
                      fill=self.overlay_config["colors"]["text_secondary"])
             
@@ -232,7 +232,7 @@ class AnalyticsOverlay:
             predictions = analytics_data.get("predictions", {})
             accumulation = analytics_data.get("accumulation_rate", {})
             
-            y_pos = 250
+            y_pos = 310  # Start after weather data section
             
             # Accumulation rate
             rate = accumulation.get("rate_per_hour", 0.0)
@@ -241,13 +241,13 @@ class AnalyticsOverlay:
             rate_text = f"Accumulation: {rate:+.1f}\"/hr"
             trend_text = f"Trend: {trend.title()}"
             
-            draw.text((15, y_pos), rate_text, 
+            draw.text((20, y_pos), rate_text, 
                      font=font_medium, 
                      fill=self.overlay_config["colors"]["text_primary"])
             
-            y_pos += 20
+            y_pos += 30  # Increased spacing
             trend_color = self.overlay_config["colors"]["success"] if trend == "stable" else self.overlay_config["colors"]["warning"]
-            draw.text((15, y_pos), trend_text, 
+            draw.text((20, y_pos), trend_text, 
                      font=font_small, 
                      fill=trend_color)
             
@@ -259,7 +259,7 @@ class AnalyticsOverlay:
         try:
             road_status = analytics_data.get("road_status", "Unknown")
             
-            y_pos = 300
+            y_pos = 380  # Start after predictions section
             
             # Clean up road status text and add proper checkmark
             if "Clear" in road_status:
@@ -278,7 +278,7 @@ class AnalyticsOverlay:
                 status_text = f"Road Status: ? {road_status}"
                 status_color = self.overlay_config["colors"]["text_primary"]
             
-            draw.text((15, y_pos), status_text, 
+            draw.text((20, y_pos), status_text, 
                      font=font_medium, 
                      fill=status_color)
             
