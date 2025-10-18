@@ -286,8 +286,8 @@ def create_config_page_html(config_data: Dict[str, Any]) -> str:
                     </div>
                     
                     <div class="form-group">
-                        <label for="location_name">Location Name</label>
-                        <input type="text" id="location_name" name="location_name" value="{location_name}" required>
+                        <label for="weather_location_name">Location Name</label>
+                        <input type="text" id="weather_location_name" name="weather_location_name" value="{location_name}" required>
                         <div class="help-text">Descriptive name for this monitoring location</div>
                     </div>
                     
