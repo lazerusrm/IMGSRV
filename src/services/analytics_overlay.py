@@ -26,9 +26,9 @@ class AnalyticsOverlay:
         
         # Overlay configuration
         self.overlay_config = {
-            "font_size_large": 24,
-            "font_size_medium": 18,
-            "font_size_small": 14,
+            "font_size_large": 48,  # Doubled from 24
+            "font_size_medium": 36,  # Doubled from 18
+            "font_size_small": 28,  # Doubled from 14
             "padding": 15,
             "corner_radius": 8,
             "opacity": 0.85,
@@ -131,15 +131,13 @@ class AnalyticsOverlay:
                 # Parse and format timestamp
                 dt = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
                 formatted_time = dt.strftime("%I:%M %p")
-                formatted_date = dt.strftime("%b %d")
             else:
                 formatted_time = "N/A"
-                formatted_date = "N/A"
             
             # Header text
-            header_text = f"Woodland Hills City Center"
+            header_text = f"Woodland Hills City"
             subheader_text = f"Snow Load Monitoring"
-            time_text = f"{formatted_time} • {formatted_date}"
+            time_text = f"{formatted_time}"
             
             # Draw header
             y_pos = 15
@@ -147,12 +145,12 @@ class AnalyticsOverlay:
                      font=font_large, 
                      fill=self.overlay_config["colors"]["text_primary"])
             
-            y_pos += 30
+            y_pos += 60
             draw.text((15, y_pos), subheader_text, 
                      font=font_large, 
                      fill=self.overlay_config["colors"]["info"])
             
-            y_pos += 30
+            y_pos += 60
             draw.text((15, y_pos), time_text, 
                      font=font_large, 
                      fill=self.overlay_config["colors"]["text_secondary"])
@@ -263,17 +261,21 @@ class AnalyticsOverlay:
             
             y_pos = 300
             
-            # Status indicator
-            status_text = f"Road Status: {road_status}"
-            
-            # Color based on status
-            if "Hazardous" in road_status:
-                status_color = self.overlay_config["colors"]["danger"]
-            elif "Slippery" in road_status or "Wet" in road_status:
-                status_color = self.overlay_config["colors"]["warning"]
-            elif "Clear" in road_status:
+            # Clean up road status text and add proper checkmark
+            if "Clear" in road_status:
+                status_text = f"Road Status: ✓ Clear"
                 status_color = self.overlay_config["colors"]["success"]
+            elif "Hazardous" in road_status:
+                status_text = f"Road Status: ⚠ Hazardous"
+                status_color = self.overlay_config["colors"]["danger"]
+            elif "Slippery" in road_status:
+                status_text = f"Road Status: ⚠ Slippery"
+                status_color = self.overlay_config["colors"]["warning"]
+            elif "Wet" in road_status:
+                status_text = f"Road Status: ⚠ Wet"
+                status_color = self.overlay_config["colors"]["warning"]
             else:
+                status_text = f"Road Status: ? {road_status}"
                 status_color = self.overlay_config["colors"]["text_primary"]
             
             draw.text((15, y_pos), status_text, 
