@@ -59,14 +59,31 @@ class WeatherDataClient:
                     if response.status == 200:
                         data = await response.json()
                         
-                        # Extract current conditions
+                        # Extract current conditions from NOAA API
                         weather_data = {
-                            "temperature": 32,  # Default fallback
+                            "temperature": 45,  # More realistic default for Utah
                             "precipitation_rate": 0.0,
-                            "humidity": 50,
+                            "humidity": 45,
                             "conditions": "Clear",
                             "timestamp": now.isoformat()
                         }
+                        
+                        # Try to extract real weather data from NOAA response
+                        try:
+                            if "properties" in data and "forecast" in data["properties"]:
+                                forecast_url = data["properties"]["forecast"]
+                                async with session.get(forecast_url) as forecast_response:
+                                    if forecast_response.status == 200:
+                                        forecast_data = await forecast_response.json()
+                                        if "properties" in forecast_data and "periods" in forecast_data["properties"]:
+                                            current_period = forecast_data["properties"]["periods"][0]
+                                            weather_data.update({
+                                                "temperature": current_period.get("temperature", 45),
+                                                "conditions": current_period.get("shortForecast", "Clear"),
+                                                "humidity": current_period.get("relativeHumidity", {}).get("value", 45)
+                                            })
+                        except Exception as e:
+                            logger.debug("Could not parse detailed weather data", error=str(e))
                         
                         # Cache the result
                         self._cache[cache_key] = (weather_data, now)
@@ -82,10 +99,10 @@ class WeatherDataClient:
     def _get_fallback_weather(self) -> Dict:
         """Return fallback weather data when API fails."""
         return {
-            "temperature": 32,
+            "temperature": 45,  # More realistic for Utah
             "precipitation_rate": 0.0,
-            "humidity": 50,
-            "conditions": "Unknown",
+            "humidity": 45,
+            "conditions": "Clear",
             "timestamp": datetime.now().isoformat(),
             "source": "fallback"
         }
@@ -219,10 +236,19 @@ class SnowDetector:
             # In production, you'd use more sophisticated methods
             snow_intensity = np.mean(snow_mask[snow_mask > 0]) if np.any(snow_mask) else 0
             
-            # Convert intensity to estimated depth (very rough approximation)
-            # This would need calibration with actual measurements
+            # Convert intensity to estimated depth (more conservative approach)
+            # Only show significant depth for very bright snow pixels
             depth_factor = snow_intensity / 255.0
-            estimated_depth = depth_factor * 6.0  # Max 6 inches
+            
+            # More conservative depth estimation
+            if depth_factor > 0.9:  # Very bright snow
+                estimated_depth = depth_factor * 2.0  # Max 2 inches
+            elif depth_factor > 0.7:  # Bright snow
+                estimated_depth = depth_factor * 1.0  # Max 1 inch
+            elif depth_factor > 0.5:  # Moderate snow
+                estimated_depth = depth_factor * 0.5  # Max 0.5 inches
+            else:  # Light snow
+                estimated_depth = depth_factor * 0.2  # Max 0.2 inches
             
             return round(estimated_depth, 1)
             

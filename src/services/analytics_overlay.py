@@ -166,7 +166,7 @@ class AnalyticsOverlay:
             snow_depth = snow_analysis.get("snow_depth_inches", 0.0)
             confidence = snow_analysis.get("confidence", 0.0)
             
-            y_pos = 120  # Start after header section
+            y_pos = 140  # Moved down to avoid covering time
             
             # Snow coverage
             coverage_text = f"Snow Coverage: {snow_coverage:.1%}"
@@ -200,7 +200,7 @@ class AnalyticsOverlay:
             conditions = weather_data.get("conditions", "Unknown")
             humidity = weather_data.get("humidity", 50)
             
-            y_pos = 220  # Start after snow data section
+            y_pos = 240  # Start after snow data section (moved down)
             
             # Temperature
             temp_text = f"Temperature: {temperature}°F"
@@ -232,7 +232,7 @@ class AnalyticsOverlay:
             predictions = analytics_data.get("predictions", {})
             accumulation = analytics_data.get("accumulation_rate", {})
             
-            y_pos = 310  # Start after weather data section
+            y_pos = 330  # Start after weather data section (moved down)
             
             # Accumulation rate
             rate = accumulation.get("rate_per_hour", 0.0)
@@ -259,7 +259,7 @@ class AnalyticsOverlay:
         try:
             road_status = analytics_data.get("road_status", "Unknown")
             
-            y_pos = 380  # Start after predictions section
+            y_pos = 400  # Start after predictions section (moved down)
             
             # Clean up road status text and add proper checkmark
             if "Clear" in road_status:
