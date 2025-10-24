@@ -586,7 +586,12 @@ EOF
     
     # Check for VPS configuration in multiple ways
     if [ -f /etc/imgserv/.env ]; then
+        log "Checking /etc/imgserv/.env for VPS configuration..."
         source /etc/imgserv/.env
+        
+        # Debug: Show what VPS settings we found
+        log "VPS_HOST from env: '$VPS_HOST'"
+        log "VPS_ENABLED from env: '$(grep "^VPS_ENABLED=" /etc/imgserv/.env 2>/dev/null || echo "not found")'"
         
         # Check if VPS is explicitly enabled OR if VPS settings exist
         if grep -q "^VPS_ENABLED=true" /etc/imgserv/.env 2>/dev/null || \
@@ -608,6 +613,8 @@ EOF
                 fi
             fi
         fi
+    else
+        log "Environment file /etc/imgserv/.env not found"
     fi
     
     if [ "$VPS_CONFIGURED" = true ]; then
@@ -1004,8 +1011,10 @@ auto_detect_vps() {
     
     # Check if we can detect VPS from common patterns
     if [ -f /etc/imgserv/.env ]; then
-        # Look for any VPS-related settings
-        if grep -q "198\.23\.249\.133" /etc/imgserv/.env 2>/dev/null; then
+        # Look for any VPS-related settings or IP addresses
+        if grep -q "198\.23\.249\.133" /etc/imgserv/.env 2>/dev/null || \
+           grep -q "woodlandhillswebcam" /etc/imgserv/.env 2>/dev/null || \
+           grep -q "industrialcamera" /etc/imgserv/.env 2>/dev/null; then
             log "Detected Woodland Hills VPS configuration"
             VPS_HOST="198.23.249.133"
             VPS_USER="root"
@@ -1025,9 +1034,34 @@ auto_detect_vps() {
             fi
             
             return 0
+        else
+            # Check for any IP address that looks like a VPS
+            VPS_IP=$(grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' /etc/imgserv/.env 2>/dev/null | head -1)
+            if [ -n "$VPS_IP" ] && [ "$VPS_IP" != "192.168.1.110" ] && [ "$VPS_IP" != "127.0.0.1" ]; then
+                log "Detected potential VPS IP: $VPS_IP"
+                VPS_HOST="$VPS_IP"
+                VPS_USER="root"
+                VPS_PORT="22"
+                VPS_PATH="/var/www/html/monitoring"
+                
+                # Update .env file with proper VPS settings
+                if ! grep -q "^VPS_ENABLED=true" /etc/imgserv/.env 2>/dev/null; then
+                    echo "" >> /etc/imgserv/.env
+                    echo "# VPS Configuration (Auto-detected from IP)" >> /etc/imgserv/.env
+                    echo "VPS_ENABLED=true" >> /etc/imgserv/.env
+                    echo "VPS_HOST=$VPS_HOST" >> /etc/imgserv/.env
+                    echo "VPS_USER=$VPS_USER" >> /etc/imgserv/.env
+                    echo "VPS_PORT=$VPS_PORT" >> /etc/imgserv/.env
+                    echo "VPS_PATH=$VPS_PATH" >> /etc/imgserv/.env
+                    log "VPS settings auto-configured for IP: $VPS_HOST"
+                fi
+                
+                return 0
+            fi
         fi
     fi
     
+    log "No VPS configuration patterns detected"
     return 1
 }
 
