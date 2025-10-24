@@ -1,6 +1,6 @@
 # Image Sequence Server
 
-**Version: 1.3.0** | **Release Date: 2025-10-24**
+**Version: 1.3.1** | **Release Date: 2025-10-24**
 
 **⚠️ PROPRIETARY SOFTWARE - ALL RIGHTS RESERVED**
 
@@ -35,8 +35,8 @@ A secure, efficient service for capturing IP camera snapshots and generating tra
 - **Simplified Driver Analytics**: Clean road condition alerts (Clear, Light, Moderate, Heavy, Ice Possible)
 - **Raw Image Processing**: Analytics performed on uncompressed camera data for maximum accuracy
 - **24-Hour Forecast Integration**: Specific snow/ice alerts with exact times
-- **Enhanced Overlay System**: Strategic positioning with maximum readability
-- **Large Font Sizes**: 48px, 36px, 28px fonts with black background boxes for excellent visibility
+- **Professional Overlay Design**: Continuous black bar across bottom with horizontal text layout
+- **Uniform Font Sizes**: Consistent 36px fonts with temperature positioned on far right
 - **Road Boundary Visualization**: Embedded inline visualization with refresh button in config page (no separate tab needed)
   - Real-time road detection overlay
   - Metadata display (road pixels, coverage %, contours, timestamp)

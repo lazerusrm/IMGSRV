@@ -5,6 +5,26 @@ All notable changes to the Image Sequence Server project will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2025-10-24
+
+### Changed - Professional Overlay Design
+- **Continuous Black Bar**: Replaced individual text boxes with professional black bar across bottom 1/8th
+- **Horizontal Layout**: All analytics data now flows horizontally: Road Condition → Alerts → Timestamp → Temperature
+- **Temperature Positioning**: Moved temperature to far right for better visual balance
+- **Uniform Font Size**: All analytics text now uses consistent 36px font size
+- **Enhanced Readability**: White/yellow text on continuous black background for maximum visibility
+
+### Improved - Code Quality & Readability
+- **Error Handling**: Enhanced error handling in analytics processing
+- **Logging**: Improved logging for analytics data flow
+- **Mobile Overlay**: Updated mobile overlay to use minimal overlay for consistency
+- **Enhanced Readability**: 
+  - Significantly larger fonts (48px, 36px, 28px) for all overlay text
+  - Semi-transparent black background boxes behind all text elements
+  - Maximum visibility and contrast against any background color
+  - Consistent text-with-background rendering helper function
+  - Improved spacing and positioning for larger text elements
+
 ## [1.3.0] - 2025-10-24
 
 ### Added - Enhanced Analytics System

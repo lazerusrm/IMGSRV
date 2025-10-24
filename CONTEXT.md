@@ -1,6 +1,6 @@
 # IMGSRV - Project Context & Architecture
 
-**Version:** 1.3.0  
+**Version:** 1.3.1  
 **Last Updated:** 2025-10-24    
 **Project Type:** Python + Bash deployment scripts  
 **Primary Use:** Snow load monitoring webcam system for Woodland Hills City Center
@@ -298,14 +298,14 @@ VPS: /var/www/html/monitoring/   # Public web root
 - **24-Hour Forecast Integration:** Provides specific snow/ice alerts with times
 
 ### 6. Analytics Overlay (`src/services/analytics_overlay.py`)
-- **Enhanced Readability Design:** Large fonts with black background boxes for maximum visibility
+- **Continuous Black Bar Design:** Professional black bar across bottom 1/8th of image
 - **Strategic Positioning:** 
-  - Top-left: Location name only ("Woodland Hills City Center")
-  - Bottom-right: Road condition, temperature, forecast alerts
-  - Bottom-right corner: Timestamp
-- **Font Sizes:** Large (48px), Medium (36px), Small (28px) for excellent readability
-- **Background Boxes:** Semi-transparent black backgrounds behind all text elements
+  - Top-left: Location name only ("Woodland Hills City Center") with individual background box
+  - Bottom: Continuous black bar with all analytics data overlaid horizontally
+- **Font Sizes:** Uniform 36px font size for all analytics text elements
+- **Horizontal Layout:** Road Condition → Alerts → Timestamp → Temperature (far right)
 - **Color-Coded Status:** Green (Clear), Yellow (Light), Orange (Moderate), Red (Heavy), Purple (Ice Possible)
+- **Enhanced Readability:** White/yellow text on continuous black background for maximum visibility
 - **Deprecated Legacy Methods:** Old overlay system marked as deprecated with warnings
 
 ### 7. Configuration Manager (`src/services/config_manager.py`)
