@@ -432,10 +432,54 @@ def create_config_page_html(config_data: Dict[str, Any]) -> str:
                     
                     <div class="form-group">
                         <label>Road Boundary Visualization</label>
-                        <a href="/analytics/road-boundaries" target="_blank" class="btn btn-secondary" style="display: inline-block; padding: 10px 20px; margin-top: 10px;">
-                            View Road Detection Area
-                        </a>
-                        <div class="help-text">Opens a visualization showing the detected road boundaries used for analytics</div>
+                        <div class="help-text">Shows the detected road boundaries used for analytics (green overlay)</div>
+                        
+                        <div id="road-viz-container" style="margin-top: 15px; border: 2px solid #ddd; border-radius: 8px; padding: 15px; background: #f9f9f9;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <span style="font-weight: bold; color: #333;">Live Road Detection</span>
+                                <button type="button" onclick="refreshRoadVisualization()" class="btn btn-secondary" style="padding: 5px 15px;">
+                                    <span id="refresh-icon">↻</span> Refresh
+                                </button>
+                            </div>
+                            
+                            <div id="viz-loading" style="display: none; text-align: center; padding: 40px; color: #666;">
+                                <div style="font-size: 24px; margin-bottom: 10px;">⏳</div>
+                                <div>Loading visualization...</div>
+                            </div>
+                            
+                            <div id="viz-error" style="display: none; text-align: center; padding: 40px; color: #d32f2f;">
+                                <div style="font-size: 24px; margin-bottom: 10px;">⚠️</div>
+                                <div id="viz-error-message">Failed to load visualization</div>
+                            </div>
+                            
+                            <img id="road-viz-image" 
+                                 src="/analytics/road-boundaries?t={int(datetime.now().timestamp())}" 
+                                 alt="Road Boundary Visualization"
+                                 style="width: 100%; height: auto; border-radius: 4px; display: block;"
+                                 onload="document.getElementById('viz-loading').style.display='none';"
+                                 onerror="showVizError();">
+                            
+                            <div id="viz-metadata" style="margin-top: 10px; padding: 10px; background: white; border-radius: 4px; font-size: 12px;">
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
+                                    <div>
+                                        <strong>Road Pixels:</strong>
+                                        <span id="meta-pixels">Loading...</span>
+                                    </div>
+                                    <div>
+                                        <strong>Road Coverage:</strong>
+                                        <span id="meta-percentage">Loading...</span>
+                                    </div>
+                                    <div>
+                                        <strong>Contours:</strong>
+                                        <span id="meta-contours">Loading...</span>
+                                    </div>
+                                    <div>
+                                        <strong>Last Updated:</strong>
+                                        <span id="meta-timestamp">Loading...</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 
@@ -555,6 +599,78 @@ def create_config_page_html(config_data: Dict[str, Any]) -> str:
             e.target.nextElementSibling.textContent = 
                 `Sensitivity for snow detection (${{value.toFixed(1)}} - ${{value < 0.5 ? 'very sensitive' : value < 0.8 ? 'moderate' : 'less sensitive'}})`;
         }});
+        
+        // Road visualization functions
+        function showVizError() {{
+            document.getElementById('road-viz-image').style.display = 'none';
+            document.getElementById('viz-loading').style.display = 'none';
+            document.getElementById('viz-error').style.display = 'block';
+        }}
+        
+        function refreshRoadVisualization() {{
+            const img = document.getElementById('road-viz-image');
+            const loading = document.getElementById('viz-loading');
+            const error = document.getElementById('viz-error');
+            const refreshIcon = document.getElementById('refresh-icon');
+            
+            // Show loading state
+            loading.style.display = 'block';
+            error.style.display = 'none';
+            img.style.display = 'none';
+            refreshIcon.style.display = 'inline-block';
+            refreshIcon.style.animation = 'spin 1s linear infinite';
+            
+            // Fetch new image with timestamp to prevent caching
+            const timestamp = new Date().getTime();
+            const newSrc = `/analytics/road-boundaries?t=${{timestamp}}`;
+            
+            // Fetch to get headers (metadata)
+            fetch(newSrc)
+                .then(response => {{
+                    if (!response.ok) throw new Error('Failed to load visualization');
+                    
+                    // Extract metadata from headers
+                    const roadPixels = response.headers.get('X-Road-Pixels') || 'N/A';
+                    const roadPercentage = response.headers.get('X-Road-Percentage') || 'N/A';
+                    const contours = response.headers.get('X-Contours-Detected') || 'N/A';
+                    const timestamp = response.headers.get('X-Timestamp') || new Date().toISOString();
+                    
+                    // Update metadata display
+                    document.getElementById('meta-pixels').textContent = roadPixels;
+                    document.getElementById('meta-percentage').textContent = roadPercentage + '%';
+                    document.getElementById('meta-contours').textContent = contours;
+                    document.getElementById('meta-timestamp').textContent = new Date(timestamp).toLocaleString();
+                    
+                    // Update image
+                    img.src = newSrc;
+                    img.style.display = 'block';
+                    loading.style.display = 'none';
+                    
+                    // Stop spin animation
+                    refreshIcon.style.animation = '';
+                }})
+                .catch(err => {{
+                    console.error('Road visualization error:', err);
+                    document.getElementById('viz-error-message').textContent = err.message;
+                    showVizError();
+                    refreshIcon.style.animation = '';
+                }});
+        }}
+        
+        // Load initial metadata on page load
+        window.addEventListener('load', function() {{
+            setTimeout(refreshRoadVisualization, 1000);
+        }});
+        
+        // Add CSS for spin animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes spin {{
+                from {{ transform: rotate(0deg); }}
+                to {{ transform: rotate(360deg); }}
+            }}
+        `;
+        document.head.appendChild(style);
     </script>
 </body>
 </html>
