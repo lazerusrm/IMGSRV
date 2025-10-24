@@ -314,10 +314,8 @@ class AnalyticsOverlay:
             logger.warning("Status drawing failed", error=str(e))
     
     def create_mobile_overlay(self, image: np.ndarray, analytics_data: Dict) -> np.ndarray:
-        """Create mobile-optimized overlay."""
-        # For mobile, we might want a different layout
-        # This could be implemented as a separate method
-        return self.create_analytics_overlay(image, analytics_data)
+        """Create mobile-optimized overlay - uses minimal overlay for better mobile experience."""
+        return self.create_minimal_overlay(image, analytics_data)
     
     def create_minimal_overlay(self, image: np.ndarray, analytics_data: Dict) -> np.ndarray:
         """Create driver-focused minimal overlay with color-coded status."""
@@ -354,35 +352,66 @@ class AnalyticsOverlay:
                 font_medium = ImageFont.load_default()
                 font_small = ImageFont.load_default()
             
-            # Draw road condition (large, color-coded)
+            # Draw location name in top-left corner with outline for visibility
+            margin = 20
+            location_text = "Woodland Hills City Center"
+            
+            # Draw text outline (black) for better visibility
+            outline_offset = 2
+            for dx in [-outline_offset, 0, outline_offset]:
+                for dy in [-outline_offset, 0, outline_offset]:
+                    if dx != 0 or dy != 0:
+                        draw.text((margin + dx, margin + dy), location_text, font=font_medium, fill=(0, 0, 0, 255))
+            
+            # Draw main text (white)
+            draw.text((margin, margin), location_text, font=font_medium, fill=(255, 255, 255, 255))
+            
+            # Position analytics data in bottom-right corner
+            start_y = height - 200  # Start 200px from bottom
+            start_x = width - 300    # Start 300px from right
+            
+            # Draw road condition with outline for visibility
             condition_text = f"Road: {condition}"
-            text_bbox = draw.textbbox((0, 0), condition_text, font=font_large)
-            text_width = text_bbox[2] - text_bbox[0]
-            text_height = text_bbox[3] - text_bbox[1]
             
-            # Background for condition
-            bg_x = 20
-            bg_y = 20
-            draw.rectangle([bg_x - 10, bg_y - 5, bg_x + text_width + 10, bg_y + text_height + 5], 
-                          fill=(0, 0, 0, 180))
+            # Draw outline
+            for dx in [-outline_offset, 0, outline_offset]:
+                for dy in [-outline_offset, 0, outline_offset]:
+                    if dx != 0 or dy != 0:
+                        draw.text((start_x + dx, start_y + dy), condition_text, font=font_large, fill=(0, 0, 0, 255))
             
-            # Draw condition text
-            draw.text((bg_x, bg_y), condition_text, font=font_large, fill=color)
+            # Draw main text
+            draw.text((start_x, start_y), condition_text, font=font_large, fill=color)
             
-            # Draw temperature
-            temp_y = bg_y + text_height + 15
+            # Draw temperature with outline
+            temp_y = start_y + 35
             temp_text = f"Temp: {temperature}"
-            draw.text((bg_x, temp_y), temp_text, font=font_medium, fill=(255, 255, 255, 255))
             
-            # Draw forecast alerts (up to 3)
+            # Draw outline
+            for dx in [-outline_offset, 0, outline_offset]:
+                for dy in [-outline_offset, 0, outline_offset]:
+                    if dx != 0 or dy != 0:
+                        draw.text((start_x + dx, temp_y + dy), temp_text, font=font_medium, fill=(0, 0, 0, 255))
+            
+            # Draw main text
+            draw.text((start_x, temp_y), temp_text, font=font_medium, fill=(255, 255, 255, 255))
+            
+            # Draw forecast alerts with outline
             y_pos = temp_y + 35
             alerts = analytics_data.get("forecast_alerts", [])[:3]
             for alert in alerts:
                 alert_text = f"⚠ {alert}"
-                draw.text((bg_x, y_pos), alert_text, font=font_small, fill=(255, 255, 0, 255))
+                
+                # Draw outline
+                for dx in [-outline_offset, 0, outline_offset]:
+                    for dy in [-outline_offset, 0, outline_offset]:
+                        if dx != 0 or dy != 0:
+                            draw.text((start_x + dx, y_pos + dy), alert_text, font=font_small, fill=(0, 0, 0, 255))
+                
+                # Draw main text
+                draw.text((start_x, y_pos), alert_text, font=font_small, fill=(255, 255, 0, 255))
                 y_pos += 25
             
-            # Draw timestamp in bottom-right
+            # Draw timestamp in bottom-right corner with outline
             timestamp_str = analytics_data.get("timestamp", "")
             if timestamp_str:
                 dt = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
@@ -392,16 +421,19 @@ class AnalyticsOverlay:
             
             text_bbox = draw.textbbox((0, 0), time_text, font=font_small)
             text_width = text_bbox[2] - text_bbox[0]
-            text_height = text_bbox[3] - text_bbox[1]
             
-            # Background for timestamp
-            bg_x = width - text_width - 20
-            bg_y = height - text_height - 20
-            draw.rectangle([bg_x - 5, bg_y - 5, bg_x + text_width + 5, bg_y + text_height + 5], 
-                          fill=(0, 0, 0, 150))
+            # Position timestamp in bottom-right corner
+            timestamp_x = width - text_width - margin
+            timestamp_y = height - 30
             
-            # Draw timestamp
-            draw.text((bg_x, bg_y), time_text, font=font_small, fill=(255, 255, 255, 255))
+            # Draw outline
+            for dx in [-outline_offset, 0, outline_offset]:
+                for dy in [-outline_offset, 0, outline_offset]:
+                    if dx != 0 or dy != 0:
+                        draw.text((timestamp_x + dx, timestamp_y + dy), time_text, font=font_small, fill=(0, 0, 0, 255))
+            
+            # Draw main text
+            draw.text((timestamp_x, timestamp_y), time_text, font=font_small, fill=(255, 255, 255, 255))
             
             # Convert back to numpy
             result_image = cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)
