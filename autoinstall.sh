@@ -563,37 +563,104 @@ EOF
         log "SSH key pair already exists, preserving existing keys"
     fi
     
+    # Test VPS connectivity if configured
+    VPS_CONNECTION_WORKING=false
+    if [ -f /etc/imgserv/.env ] && grep -q "^VPS_ENABLED=true" /etc/imgserv/.env 2>/dev/null; then
+        source /etc/imgserv/.env
+        if [ -n "$VPS_HOST" ] && [ "$VPS_HOST" != "your-vps-server.com" ]; then
+            log "Testing VPS connection..."
+            if ssh -i /opt/imgserv/.ssh/vps_key -p ${VPS_PORT:-22} -o StrictHostKeyChecking=no -o ConnectTimeout=10 ${VPS_USER}@${VPS_HOST} "echo 'Connection test OK'" &>/dev/null; then
+                log "✅ VPS SSH connection working!"
+                VPS_CONNECTION_WORKING=true
+                
+                # Test rsync specifically
+                log "Testing rsync to VPS..."
+                mkdir -p /tmp/test-rsync-$$
+                echo "test" > /tmp/test-rsync-$$/test.txt
+                if rsync -avz --delete -e "ssh -i /opt/imgserv/.ssh/vps_key -p ${VPS_PORT:-22} -o StrictHostKeyChecking=no" /tmp/test-rsync-$$ ${VPS_USER}@${VPS_HOST}:/tmp/test-rsync-$$ &>/dev/null; then
+                    log "✅ Rsync to VPS working!"
+                    # Test reverse rsync
+                    if rsync -avz --delete -e "ssh -i /opt/imgserv/.ssh/vps_key -p ${VPS_PORT:-22} -o StrictHostKeyChecking=no" ${VPS_USER}@${VPS_HOST}:/tmp/test-rsync-$$ /tmp/test-rsync-$$-reverse &>/dev/null; then
+                        log "✅ Reverse rsync working!"
+                        rm -rf /tmp/test-rsync-$$ /tmp/test-rsync-$$-reverse
+                    else
+                        warn "Reverse rsync test failed"
+                        rm -rf /tmp/test-rsync-$$
+                    fi
+                else
+                    warn "Rsync test failed - VPS may need setup or permissions fix"
+                fi
+            else
+                warn "VPS SSH connection failed - may need key redeployment"
+            fi
+        fi
+    fi
+    
     # Copy SSH key to root directory for service access
     cp /opt/imgserv/.ssh/vps_key /root/.ssh/ 2>/dev/null || true
     cp /opt/imgserv/.ssh/vps_key.pub /root/.ssh/ 2>/dev/null || true
     chmod 600 /root/.ssh/vps_key 2>/dev/null || true
     chmod 644 /root/.ssh/vps_key.pub 2>/dev/null || true
     
-    # Prompt to deploy SSH key to VPS
+    # Handle VPS deployment based on connection test results
     if [ -f /etc/imgserv/.env ] && grep -q "^VPS_ENABLED=true" /etc/imgserv/.env 2>/dev/null; then
         source /etc/imgserv/.env
         if [ -n "$VPS_HOST" ] && [ "$VPS_HOST" != "your-vps-server.com" ]; then
             log "VPS configuration detected: ${VPS_USER}@${VPS_HOST}"
-            echo -n "Would you like to deploy the SSH key to your VPS now? [y/N]: "
-            read -r DEPLOY_KEY
             
-            if [[ "$DEPLOY_KEY" =~ ^[Yy]$ ]]; then
-                deploy_vps_key
+            if [[ "$VPS_CONNECTION_WORKING" == "true" ]]; then
+                log "✅ VPS connection is working - no deployment needed"
                 
-                # Offer to fix VPS permissions
-                echo -n "Would you like to fix VPS permissions now? [y/N]: "
-                read -r FIX_PERMS
-                
-                if [[ "$FIX_PERMS" =~ ^[Yy]$ ]]; then
-                    fix_vps_permissions
+                # Check if VPS needs setup (nginx, SSL, etc.)
+                log "Checking VPS setup status..."
+                if ssh -i /opt/imgserv/.ssh/vps_key -p ${VPS_PORT:-22} -o StrictHostKeyChecking=no -o ConnectTimeout=10 ${VPS_USER}@${VPS_HOST} "systemctl is-active nginx &>/dev/null && echo 'nginx_active'" &>/dev/null; then
+                    log "✅ VPS nginx is active"
+                    
+                    # Check if SSL is configured
+                    if ssh -i /opt/imgserv/.ssh/vps_key -p ${VPS_PORT:-22} -o StrictHostKeyChecking=no -o ConnectTimeout=10 ${VPS_USER}@${VPS_HOST} "test -f /etc/nginx/sites-available/monitoring && grep -q 'ssl_certificate' /etc/nginx/sites-available/monitoring && echo 'ssl_configured'" &>/dev/null; then
+                        log "✅ VPS SSL is configured"
+                    else
+                        warn "VPS SSL not configured - HTTPS may not work"
+                        echo -n "Would you like to configure HTTPS on VPS now? [y/N]: "
+                        read -r CONFIGURE_SSL
+                        if [[ "$CONFIGURE_SSL" =~ ^[Yy]$ ]]; then
+                            log "Configuring HTTPS on VPS..."
+                            ssh -i /opt/imgserv/.ssh/vps_key -p ${VPS_PORT:-22} -o StrictHostKeyChecking=no -o ConnectTimeout=10 ${VPS_USER}@${VPS_HOST} "curl -sSL https://raw.githubusercontent.com/lazerusrm/IMGSRV/main/deploy/vps-patch-https.sh | bash" || warn "HTTPS configuration failed"
+                        fi
+                    fi
                 else
-                    warn "Skipping VPS permission fix. You can fix it later by running:"
-                    warn "  curl -sSL https://raw.githubusercontent.com/lazerusrm/IMGSRV/main/deploy/vps-fix-permissions.sh | bash"
-                    warn "  (Run this command on your VPS server)"
+                    warn "VPS nginx not active - VPS may need full setup"
+                    echo -n "Would you like to run full VPS setup now? [y/N]: "
+                    read -r SETUP_VPS
+                    if [[ "$SETUP_VPS" =~ ^[Yy]$ ]]; then
+                        log "Running full VPS setup..."
+                        ssh -i /opt/imgserv/.ssh/vps_key -p ${VPS_PORT:-22} -o StrictHostKeyChecking=no -o ConnectTimeout=10 ${VPS_USER}@${VPS_HOST} "curl -sSL https://raw.githubusercontent.com/lazerusrm/IMGSRV/main/deploy/vps-deploy.sh | bash" || warn "VPS setup failed"
+                    fi
                 fi
             else
-                warn "Skipping VPS key deployment. You can deploy it later by running:"
-                warn "  ssh-copy-id -i /opt/imgserv/.ssh/vps_key ${VPS_USER}@${VPS_HOST}"
+                warn "VPS connection failed - key deployment needed"
+                echo -n "Would you like to deploy the SSH key to your VPS now? [y/N]: "
+                read -r DEPLOY_KEY
+                
+                if [[ "$DEPLOY_KEY" =~ ^[Yy]$ ]]; then
+                    deploy_vps_key
+                    
+                    # After key deployment, test again and offer VPS setup
+                    if ssh -i /opt/imgserv/.ssh/vps_key -p ${VPS_PORT:-22} -o StrictHostKeyChecking=no -o ConnectTimeout=10 ${VPS_USER}@${VPS_HOST} "echo 'Connection test OK'" &>/dev/null; then
+                        log "✅ Key deployment successful!"
+                        echo -n "Would you like to run full VPS setup now? [y/N]: "
+                        read -r SETUP_VPS
+                        if [[ "$SETUP_VPS" =~ ^[Yy]$ ]]; then
+                            log "Running full VPS setup..."
+                            ssh -i /opt/imgserv/.ssh/vps_key -p ${VPS_PORT:-22} -o StrictHostKeyChecking=no -o ConnectTimeout=10 ${VPS_USER}@${VPS_HOST} "curl -sSL https://raw.githubusercontent.com/lazerusrm/IMGSRV/main/deploy/vps-deploy.sh | bash" || warn "VPS setup failed"
+                        fi
+                    else
+                        warn "Key deployment failed - manual setup may be required"
+                    fi
+                else
+                    warn "Skipping VPS key deployment. You can deploy it later by running:"
+                    warn "  ssh-copy-id -i /opt/imgserv/.ssh/vps_key ${VPS_USER}@${VPS_HOST}"
+                fi
             fi
         fi
     fi
