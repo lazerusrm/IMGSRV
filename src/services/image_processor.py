@@ -51,7 +51,10 @@ class ImageProcessor:
         location: str = "Woodland Hills City Center"
     ) -> bytes:
         """
-        Add traffic camera-style timestamp overlay to image.
+        DEPRECATED: Add traffic camera-style timestamp overlay to image.
+        
+        This method is deprecated as timestamps are now handled by the analytics overlay
+        system which displays them in the bottom right corner.
         
         Args:
             image_data: Raw image bytes
@@ -61,6 +64,13 @@ class ImageProcessor:
         Returns:
             Modified image bytes
         """
+        import warnings
+        warnings.warn(
+            "add_timestamp_overlay is deprecated. Timestamps are now handled by analytics overlay.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        
         try:
             # Open image
             with Image.open(BytesIO(image_data)) as img:
@@ -146,10 +156,18 @@ class ImageProcessor:
             
             processed_images = []
             
-            # Process each image with timestamp overlay
+            # Process each image (no timestamp overlay - now handled by analytics overlay)
             for img_data, timestamp in images:
-                processed_img = await self.add_timestamp_overlay(img_data, timestamp)
-                processed_images.append(processed_img)
+                # Just resize the image to target dimensions
+                with Image.open(BytesIO(img_data)) as img:
+                    if img.mode != 'RGB':
+                        img = img.convert('RGB')
+                    img = img.resize((self.output_width, self.output_height), Image.Resampling.LANCZOS)
+                    
+                    # Save to bytes
+                    output = BytesIO()
+                    img.save(output, format='JPEG', quality=self.image_quality, optimize=True)
+                    processed_images.append(output.getvalue())
             
             # Create animated GIF
             frames = []
@@ -214,8 +232,16 @@ class ImageProcessor:
             frames = []
             
             for image_data, timestamp in images:
-                # Process image with timestamp
-                processed_image = await self.add_timestamp_overlay(image_data, timestamp)
+                # Process image (resize only - timestamp now handled by analytics overlay)
+                with Image.open(BytesIO(image_data)) as img:
+                    if img.mode != 'RGB':
+                        img = img.convert('RGB')
+                    img = img.resize((self.output_width, self.output_height), Image.Resampling.LANCZOS)
+                    
+                    # Save to bytes
+                    output = BytesIO()
+                    img.save(output, format='JPEG', quality=self.image_quality, optimize=True)
+                    processed_image = output.getvalue()
                 
                 # Add analytics overlay if data provided
                 if analytics_data and overlay_style != "none":
