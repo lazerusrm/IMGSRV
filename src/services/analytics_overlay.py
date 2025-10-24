@@ -318,7 +318,7 @@ class AnalyticsOverlay:
         return self.create_minimal_overlay(image, analytics_data)
     
     def create_minimal_overlay(self, image: np.ndarray, analytics_data: Dict) -> np.ndarray:
-        """Create driver-focused minimal overlay with color-coded status."""
+        """Create driver-focused minimal overlay with color-coded status and enhanced readability."""
         try:
             # Convert to PIL
             pil_image = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
@@ -342,76 +342,73 @@ class AnalyticsOverlay:
             
             color = color_map.get(condition, (255, 255, 255))
             
-            # Load fonts
+            # Load fonts with much larger sizes for better readability
             try:
-                font_large = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 28)
-                font_medium = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 20)
-                font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 16)
+                font_large = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 48)  # Increased from 28
+                font_medium = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 36)     # Increased from 20
+                font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 28)      # Increased from 16
             except:
                 font_large = ImageFont.load_default()
                 font_medium = ImageFont.load_default()
                 font_small = ImageFont.load_default()
             
-            # Draw location name in top-left corner with outline for visibility
+            # Helper function to draw text with black background box
+            def draw_text_with_background(text, x, y, font, text_color, bg_color=(0, 0, 0, 200)):
+                # Get text bounding box
+                bbox = draw.textbbox((0, 0), text, font=font)
+                text_width = bbox[2] - bbox[0]
+                text_height = bbox[3] - bbox[1]
+                
+                # Calculate background box dimensions with padding
+                padding = 8
+                bg_x1 = x - padding
+                bg_y1 = y - padding
+                bg_x2 = x + text_width + padding
+                bg_y2 = y + text_height + padding
+                
+                # Draw black background box
+                draw.rectangle([bg_x1, bg_y1, bg_x2, bg_y2], fill=bg_color)
+                
+                # Draw text on top
+                draw.text((x, y), text, font=font, fill=text_color)
+                
+                return text_height + padding * 2
+            
+            # Draw location name in top-left corner with background box
             margin = 20
             location_text = "Woodland Hills City Center"
-            
-            # Draw text outline (black) for better visibility
-            outline_offset = 2
-            for dx in [-outline_offset, 0, outline_offset]:
-                for dy in [-outline_offset, 0, outline_offset]:
-                    if dx != 0 or dy != 0:
-                        draw.text((margin + dx, margin + dy), location_text, font=font_medium, fill=(0, 0, 0, 255))
-            
-            # Draw main text (white)
-            draw.text((margin, margin), location_text, font=font_medium, fill=(255, 255, 255, 255))
+            location_height = draw_text_with_background(
+                location_text, margin, margin, font_medium, (255, 255, 255, 255)
+            )
             
             # Position analytics data in bottom-right corner
-            start_y = height - 200  # Start 200px from bottom
-            start_x = width - 300    # Start 300px from right
+            start_y = height - 300  # Start 300px from bottom (increased space)
+            start_x = width - 400    # Start 400px from right (increased space)
             
-            # Draw road condition with outline for visibility
+            # Draw road condition with background box
             condition_text = f"Road: {condition}"
+            condition_height = draw_text_with_background(
+                condition_text, start_x, start_y, font_large, color
+            )
             
-            # Draw outline
-            for dx in [-outline_offset, 0, outline_offset]:
-                for dy in [-outline_offset, 0, outline_offset]:
-                    if dx != 0 or dy != 0:
-                        draw.text((start_x + dx, start_y + dy), condition_text, font=font_large, fill=(0, 0, 0, 255))
-            
-            # Draw main text
-            draw.text((start_x, start_y), condition_text, font=font_large, fill=color)
-            
-            # Draw temperature with outline
-            temp_y = start_y + 35
+            # Draw temperature with background box
+            temp_y = start_y + condition_height + 10
             temp_text = f"Temp: {temperature}"
+            temp_height = draw_text_with_background(
+                temp_text, start_x, temp_y, font_medium, (255, 255, 255, 255)
+            )
             
-            # Draw outline
-            for dx in [-outline_offset, 0, outline_offset]:
-                for dy in [-outline_offset, 0, outline_offset]:
-                    if dx != 0 or dy != 0:
-                        draw.text((start_x + dx, temp_y + dy), temp_text, font=font_medium, fill=(0, 0, 0, 255))
-            
-            # Draw main text
-            draw.text((start_x, temp_y), temp_text, font=font_medium, fill=(255, 255, 255, 255))
-            
-            # Draw forecast alerts with outline
-            y_pos = temp_y + 35
+            # Draw forecast alerts with background boxes
+            y_pos = temp_y + temp_height + 10
             alerts = analytics_data.get("forecast_alerts", [])[:3]
             for alert in alerts:
                 alert_text = f"⚠ {alert}"
-                
-                # Draw outline
-                for dx in [-outline_offset, 0, outline_offset]:
-                    for dy in [-outline_offset, 0, outline_offset]:
-                        if dx != 0 or dy != 0:
-                            draw.text((start_x + dx, y_pos + dy), alert_text, font=font_small, fill=(0, 0, 0, 255))
-                
-                # Draw main text
-                draw.text((start_x, y_pos), alert_text, font=font_small, fill=(255, 255, 0, 255))
-                y_pos += 25
+                alert_height = draw_text_with_background(
+                    alert_text, start_x, y_pos, font_small, (255, 255, 0, 255)
+                )
+                y_pos += alert_height + 5
             
-            # Draw timestamp in bottom-right corner with outline
+            # Draw timestamp in bottom-right corner with background box
             timestamp_str = analytics_data.get("timestamp", "")
             if timestamp_str:
                 dt = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
@@ -419,21 +416,18 @@ class AnalyticsOverlay:
             else:
                 time_text = "N/A"
             
+            # Get text width for positioning
             text_bbox = draw.textbbox((0, 0), time_text, font=font_small)
             text_width = text_bbox[2] - text_bbox[0]
             
             # Position timestamp in bottom-right corner
-            timestamp_x = width - text_width - margin
-            timestamp_y = height - 30
+            timestamp_x = width - text_width - margin - 16  # Account for padding
+            timestamp_y = height - 50  # Increased from 30
             
-            # Draw outline
-            for dx in [-outline_offset, 0, outline_offset]:
-                for dy in [-outline_offset, 0, outline_offset]:
-                    if dx != 0 or dy != 0:
-                        draw.text((timestamp_x + dx, timestamp_y + dy), time_text, font=font_small, fill=(0, 0, 0, 255))
-            
-            # Draw main text
-            draw.text((timestamp_x, timestamp_y), time_text, font=font_small, fill=(255, 255, 255, 255))
+            # Draw timestamp with background box
+            draw_text_with_background(
+                time_text, timestamp_x, timestamp_y, font_small, (255, 255, 255, 255)
+            )
             
             # Convert back to numpy
             result_image = cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)
