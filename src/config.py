@@ -41,6 +41,8 @@ class Settings(BaseSettings):
     sequence_duration_minutes: int = Field(default=5)  # How long the sequence spans
     sequence_update_interval_minutes: int = Field(default=5)  # How often to create new sequence
     max_images_per_sequence: int = Field(default=10)  # Number of images in each sequence
+    gif_frame_duration_seconds: float = Field(default=1.0)  # How long each frame displays in GIF
+    gif_optimization_level: str = Field(default="balanced")  # low, balanced, aggressive
     
     # Storage settings
     data_dir: Path = Field(default=Path("/var/lib/imgserv"))

@@ -19,6 +19,7 @@ from src.services.storage import StorageManager
 from src.services.vps_sync import VPSSynchronizer
 from src.services.snow_analytics import SnowAnalytics
 from src.services.analytics_overlay import AnalyticsOverlay
+from src.services.config_manager import ConfigManager
 
 logger = structlog.get_logger(__name__)
 
@@ -56,6 +57,9 @@ class ImageSequenceService:
         # Initialize analytics components
         self.analytics = SnowAnalytics(settings) if settings.analytics_enabled else None
         self.overlay = AnalyticsOverlay(settings) if settings.analytics_overlay_enabled else None
+        
+        # Initialize config manager for dynamic settings
+        self.config_manager = ConfigManager(settings)
         
         # State management
         self.is_running = False
@@ -102,6 +106,33 @@ class ImageSequenceService:
         except Exception as e:
             logger.error("Failed to stop service", error=str(e))
     
+    async def reload_config(self):
+        """Reload configuration and restart capture loop with new settings."""
+        try:
+            logger.info("Reloading configuration...")
+            
+            # Reload config manager
+            self.config_manager = ConfigManager(self.settings)
+            
+            # Restart capture loop to apply new intervals
+            if self.capture_task and not self.capture_task.done():
+                logger.info("Restarting capture loop with new settings...")
+                self.capture_task.cancel()
+                try:
+                    await self.capture_task
+                except asyncio.CancelledError:
+                    pass
+                
+                # Start new capture task
+                self.capture_task = asyncio.create_task(self._capture_loop())
+                logger.info("Capture loop restarted with updated configuration")
+            else:
+                logger.info("Configuration reloaded (capture loop not running)")
+            
+        except Exception as e:
+            logger.error("Failed to reload configuration", error=str(e))
+            raise
+    
     async def _capture_loop(self):
         """Background task for continuous image capture."""
         consecutive_failures = 0
@@ -137,8 +168,10 @@ class ImageSequenceService:
                 # Enforce storage limits
                 await self.storage.enforce_storage_limits()
                 
-                # Wait before next capture (every 30-60 seconds for 5-10 image sequence)
-                await asyncio.sleep(45)  # Capture every 45 seconds
+                # Calculate dynamic capture interval from config
+                capture_interval = self.config_manager.get_capture_interval()
+                logger.debug("Next capture in seconds", interval=capture_interval)
+                await asyncio.sleep(capture_interval)
                 
             except CameraError as e:
                 consecutive_failures += 1
@@ -160,9 +193,13 @@ class ImageSequenceService:
         try:
             now = datetime.now()
             
+            # Get update interval from config manager
+            config = self.config_manager.get_config()
+            update_interval = config.get("sequence_update_interval_minutes", self.settings.sequence_update_interval_minutes)
+            
             # Check if it's time to update sequence
             if (self.last_sequence_update is None or 
-                now - self.last_sequence_update >= timedelta(minutes=self.settings.sequence_update_interval_minutes)):
+                now - self.last_sequence_update >= timedelta(minutes=update_interval)):
                 
                 await self.generate_sequence()
                 self.last_sequence_update = now
@@ -216,14 +253,20 @@ class ImageSequenceService:
                 except Exception as e:
                     logger.warning("Failed to get analytics data for sequence", error=str(e))
             
+            # Get GIF settings from config
+            config = self.config_manager.get_config()
+            frame_duration = config.get("gif_frame_duration_seconds", 1.0)
+            optimization_level = config.get("gif_optimization_level", "balanced")
+            
             # Create sequence with analytics overlay
             overlay_style = self.settings.analytics_overlay_style if self.settings.analytics_overlay_enabled else "none"
             await self.image_processor.create_image_sequence_with_analytics(
                 images_with_data,
                 sequence_path,
-                duration_seconds=5,
+                duration_seconds=int(frame_duration),
                 analytics_data=analytics_data,
-                overlay_style=overlay_style
+                overlay_style=overlay_style,
+                optimization_level=optimization_level
             )
             
             # Clean up old sequences (keep only the latest 3)

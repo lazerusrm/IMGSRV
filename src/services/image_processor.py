@@ -190,10 +190,11 @@ class ImageProcessor:
         output_path: Path,
         duration_seconds: int = 5,
         analytics_data: Optional[Dict] = None,
-        overlay_style: str = "minimal"
+        overlay_style: str = "minimal",
+        optimization_level: str = "balanced"
     ) -> Path:
         """
-        Create an image sequence with optional analytics overlay.
+        Create an image sequence with optional analytics overlay and optimization.
         
         Args:
             images: List of (image_bytes, timestamp) tuples
@@ -201,6 +202,7 @@ class ImageProcessor:
             duration_seconds: Duration to display each frame
             analytics_data: Analytics data for overlay
             overlay_style: Style of overlay (full, minimal, mobile, none)
+            optimization_level: GIF optimization level (low, balanced, aggressive)
             
         Returns:
             Path to the created sequence file
@@ -241,30 +243,49 @@ class ImageProcessor:
                         logger.warning("Analytics overlay failed", error=str(e))
                         # Continue without overlay
                 
-                # Convert to PIL Image
+                # Convert to PIL Image and resize for web optimization
                 frame = Image.open(BytesIO(processed_image))
+                
+                # Resize to 1280x720 for web serving (balanced quality/size)
+                if frame.size != (1280, 720):
+                    frame = frame.resize((1280, 720), Image.Resampling.LANCZOS)
+                
+                # Apply color quantization based on optimization level
+                if optimization_level == "aggressive":
+                    frame = frame.convert('P', palette=Image.Palette.ADAPTIVE, colors=128)
+                elif optimization_level == "balanced":
+                    frame = frame.convert('P', palette=Image.Palette.ADAPTIVE, colors=192)
+                else:  # low
+                    frame = frame.convert('P', palette=Image.Palette.ADAPTIVE, colors=256)
+                
                 frames.append(frame)
             
             if frames:
-                # Calculate frame duration for 1 FPS (1000ms per frame)
-                frame_duration = 1000  # 1 second per frame for 1 FPS
+                # Calculate frame duration in milliseconds
+                frame_duration = duration_seconds * 1000
                 
-                # Save as animated GIF
+                # Save as optimized animated GIF
                 frames[0].save(
                     output_path,
                     save_all=True,
                     append_images=frames[1:],
                     duration=frame_duration,
                     loop=0,
-                    optimize=True
+                    optimize=True,
+                    quality=85 if optimization_level != "aggressive" else 75
                 )
                 
+                # Get file size for logging
+                file_size_kb = output_path.stat().st_size / 1024 if output_path.exists() else 0
+                
                 logger.info(
-                    "Image sequence with analytics created",
+                    "Optimized image sequence created",
                     frames=len(frames),
                     duration_ms=frame_duration,
                     output_path=str(output_path),
-                    overlay_style=overlay_style
+                    overlay_style=overlay_style,
+                    optimization_level=optimization_level,
+                    file_size_kb=round(file_size_kb, 2)
                 )
             
             return output_path

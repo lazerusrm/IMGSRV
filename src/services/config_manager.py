@@ -39,6 +39,10 @@ class ConfigManager:
             "snow_detection_threshold": 0.7,
             "ice_warning_temperature": 32,
             "hazardous_snow_depth": 2.0,
+            "sequence_update_interval_minutes": 5,
+            "max_images_per_sequence": 10,
+            "gif_frame_duration_seconds": 1.0,
+            "gif_optimization_level": "balanced",
             "last_updated": None
         }
         
@@ -139,7 +143,11 @@ class ConfigManager:
             "analytics_overlay_style": lambda x: x in ["full", "minimal", "mobile", "none"],
             "snow_detection_threshold": lambda x: isinstance(x, (int, float)) and 0 <= x <= 1,
             "ice_warning_temperature": lambda x: isinstance(x, (int, float)) and -50 <= x <= 100,
-            "hazardous_snow_depth": lambda x: isinstance(x, (int, float)) and 0 <= x <= 50
+            "hazardous_snow_depth": lambda x: isinstance(x, (int, float)) and 0 <= x <= 50,
+            "sequence_update_interval_minutes": lambda x: isinstance(x, int) and 1 <= x <= 60,
+            "max_images_per_sequence": lambda x: isinstance(x, int) and 1 <= x <= 30,
+            "gif_frame_duration_seconds": lambda x: isinstance(x, (int, float)) and 0.1 <= x <= 5.0,
+            "gif_optimization_level": lambda x: x in ["low", "balanced", "aggressive"]
         }
         
         for key, value in updates.items():
@@ -203,3 +211,18 @@ class ConfigManager:
         }
         
         return self.update_config(updates)
+    
+    def get_capture_interval(self) -> float:
+        """
+        Calculate dynamic capture interval based on update interval and max images.
+        
+        Returns:
+            Capture interval in seconds
+        """
+        update_interval = self.current_config.get("sequence_update_interval_minutes", 5)
+        max_images = self.current_config.get("max_images_per_sequence", 10)
+        
+        # Formula: capture_interval = (update_interval_minutes * 60) / max_images
+        capture_interval = (update_interval * 60) / max_images
+        
+        return round(capture_interval, 1)

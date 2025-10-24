@@ -16,7 +16,6 @@ The Image Sequence Server uses a **two-server security model** with clear separa
 - **Access**: Public internet
 - **Port**: 80/443 (public)
 
----
 
 ## ⚙️ **Configuration System Security**
 
