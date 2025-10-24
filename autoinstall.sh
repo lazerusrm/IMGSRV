@@ -561,6 +561,17 @@ EOF
         log "SSH key pair generated for VPS sync"
     else
         log "SSH key pair already exists, preserving existing keys"
+        
+        # Check if existing key is valid
+        if ! ssh-keygen -l -f /opt/imgserv/.ssh/vps_key &>/dev/null; then
+            warn "Existing SSH key appears corrupted, regenerating..."
+            rm -f /opt/imgserv/.ssh/vps_key /opt/imgserv/.ssh/vps_key.pub
+            ssh-keygen -t rsa -b 4096 -f /opt/imgserv/.ssh/vps_key -N ""
+            chown imgserv:imgserv /opt/imgserv/.ssh/vps_key*
+            chmod 600 /opt/imgserv/.ssh/vps_key
+            chmod 644 /opt/imgserv/.ssh/vps_key.pub
+            log "SSH key pair regenerated due to corruption"
+        fi
     fi
     
     # Test VPS connectivity if configured
@@ -591,7 +602,46 @@ EOF
                     warn "Rsync test failed - VPS may need setup or permissions fix"
                 fi
             else
-                warn "VPS SSH connection failed - may need key redeployment"
+                warn "VPS SSH connection failed - key deployment needed"
+                VPS_CONNECTION_WORKING=false
+                
+                # Offer to fix SSH key with password
+                echo -n "SSH key not working. Deploy/redeploy SSH key with password? [y/N]: "
+                read -r DEPLOY_KEY
+                
+                if [[ "$DEPLOY_KEY" =~ ^[Yy]$ ]]; then
+                    log "Deploying SSH key with password authentication..."
+                    deploy_vps_key
+                    
+                    # Test connection again after deployment
+                    log "Testing SSH connection after key deployment..."
+                    if ssh -i /opt/imgserv/.ssh/vps_key -p ${VPS_PORT:-22} -o StrictHostKeyChecking=no -o ConnectTimeout=10 ${VPS_USER}@${VPS_HOST} "echo 'Connection test OK'" &>/dev/null; then
+                        log "✅ SSH key deployment successful!"
+                        VPS_CONNECTION_WORKING=true
+                        
+                        # Test rsync after successful SSH
+                        log "Testing rsync after SSH fix..."
+                        mkdir -p /tmp/test-rsync-$$
+                        echo "test" > /tmp/test-rsync-$$/test.txt
+                        if rsync -avz --delete -e "ssh -i /opt/imgserv/.ssh/vps_key -p ${VPS_PORT:-22} -o StrictHostKeyChecking=no" /tmp/test-rsync-$$ ${VPS_USER}@${VPS_HOST}:/tmp/test-rsync-$$ &>/dev/null; then
+                            log "✅ Rsync working after SSH fix!"
+                            rm -rf /tmp/test-rsync-$$
+                        else
+                            warn "SSH works but rsync failed - VPS may need setup"
+                            echo -n "Would you like to run VPS setup to fix rsync? [y/N]: "
+                            read -r SETUP_VPS
+                            if [[ "$SETUP_VPS" =~ ^[Yy]$ ]]; then
+                                log "Running VPS setup..."
+                                ssh -i /opt/imgserv/.ssh/vps_key -p ${VPS_PORT:-22} -o StrictHostKeyChecking=no -o ConnectTimeout=10 ${VPS_USER}@${VPS_HOST} "curl -sSL https://raw.githubusercontent.com/lazerusrm/IMGSRV/main/deploy/vps-deploy.sh | bash" || warn "VPS setup failed"
+                            fi
+                        fi
+                    else
+                        warn "SSH key deployment failed - manual setup may be required"
+                    fi
+                else
+                    warn "Skipping SSH key deployment. Manual setup required:"
+                    warn "  ssh-copy-id -i /opt/imgserv/.ssh/vps_key ${VPS_USER}@${VPS_HOST}"
+                fi
             fi
         fi
     fi
