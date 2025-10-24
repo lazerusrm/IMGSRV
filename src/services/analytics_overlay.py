@@ -318,7 +318,7 @@ class AnalyticsOverlay:
         return self.create_minimal_overlay(image, analytics_data)
     
     def create_minimal_overlay(self, image: np.ndarray, analytics_data: Dict) -> np.ndarray:
-        """Create driver-focused minimal overlay with color-coded status and enhanced readability."""
+        """Create driver-focused minimal overlay with horizontal bottom layout."""
         try:
             # Convert to PIL
             pil_image = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
@@ -342,15 +342,12 @@ class AnalyticsOverlay:
             
             color = color_map.get(condition, (255, 255, 255))
             
-            # Load fonts with much larger sizes for better readability
+            # Load fonts - all the same size for consistency
+            font_size = 36  # Uniform font size
             try:
-                font_large = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 48)  # Increased from 28
-                font_medium = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 36)     # Increased from 20
-                font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 28)      # Increased from 16
+                font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size)
             except:
-                font_large = ImageFont.load_default()
-                font_medium = ImageFont.load_default()
-                font_small = ImageFont.load_default()
+                font = ImageFont.load_default()
             
             # Helper function to draw text with black background box
             def draw_text_with_background(text, x, y, font, text_color, bg_color=(0, 0, 0, 200)):
@@ -372,86 +369,63 @@ class AnalyticsOverlay:
                 # Draw text on top
                 draw.text((x, y), text, font=font, fill=text_color)
                 
-                return text_height + padding * 2
+                return text_width + padding * 2
             
             # Draw location name in top-left corner with background box
-            margin = 30  # Increased margin for larger fonts
+            margin = 30
             location_text = "Woodland Hills City Center"
-            location_height = draw_text_with_background(
-                location_text, margin, margin, font_medium, (255, 255, 255, 255)
+            draw_text_with_background(
+                location_text, margin, margin, font, (255, 255, 255, 255)
             )
             
-            # Position analytics data in bottom-right corner with dynamic spacing
-            # Calculate required space for all elements
-            max_text_width = 0
-            total_height = 0
+            # Calculate bottom 1/8th area for horizontal layout
+            bottom_area_height = height // 8
+            bottom_y = height - bottom_area_height + 20  # Start 20px up from bottom
             
-            # Estimate space needed for all elements
-            condition_text = f"Road: {condition}"
+            # Prepare all text elements for horizontal layout
+            elements = []
+            
+            # Road Condition
+            road_text = f"Road Condition: {condition}"
+            elements.append((road_text, color))
+            
+            # Temperature
             temp_text = f"Temp: {temperature}"
-            alerts = analytics_data.get("forecast_alerts", [])[:3]
+            elements.append((temp_text, (255, 255, 255, 255)))
             
-            # Calculate maximum width needed
-            for text in [condition_text, temp_text] + [f"⚠ {alert}" for alert in alerts]:
-                bbox = draw.textbbox((0, 0), text, font=font_large)  # Use largest font for width calculation
-                text_width = bbox[2] - bbox[0]
-                max_text_width = max(max_text_width, text_width)
-            
-            # Calculate total height needed
-            total_height += 60  # Road condition (48px font + padding)
-            total_height += 50  # Temperature (36px font + padding)
-            total_height += len(alerts) * 40  # Alerts (28px font + padding)
-            total_height += 20  # Extra spacing
-            
-            # Position with adequate margins
-            start_x = width - max_text_width - margin - 20  # Extra margin for background box
-            start_y = height - total_height - margin
-            
-            # Ensure we don't go off-screen
-            start_x = max(margin, start_x)
-            start_y = max(margin + location_height + 20, start_y)  # Don't overlap with location
-            
-            # Draw road condition with background box
-            condition_height = draw_text_with_background(
-                condition_text, start_x, start_y, font_large, color
-            )
-            
-            # Draw temperature with background box
-            temp_y = start_y + condition_height + 15  # Increased spacing
-            temp_text = f"Temp: {temperature}"
-            temp_height = draw_text_with_background(
-                temp_text, start_x, temp_y, font_medium, (255, 255, 255, 255)
-            )
-            
-            # Draw forecast alerts with background boxes
-            y_pos = temp_y + temp_height + 15  # Increased spacing
+            # Forecast alerts (up to 2 to fit horizontally)
+            alerts = analytics_data.get("forecast_alerts", [])[:2]
             for alert in alerts:
                 alert_text = f"⚠ {alert}"
-                alert_height = draw_text_with_background(
-                    alert_text, start_x, y_pos, font_small, (255, 255, 0, 255)
-                )
-                y_pos += alert_height + 10  # Increased spacing between alerts
+                elements.append((alert_text, (255, 255, 0, 255)))
             
-            # Draw timestamp in bottom-right corner with background box
+            # Timestamp
             timestamp_str = analytics_data.get("timestamp", "")
             if timestamp_str:
                 dt = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
                 time_text = dt.strftime("%I:%M %p")
             else:
                 time_text = "N/A"
+            elements.append((time_text, (255, 255, 255, 255)))
             
-            # Get text width for positioning
-            text_bbox = draw.textbbox((0, 0), time_text, font=font_small)
-            text_width = text_bbox[2] - text_bbox[0]
+            # Calculate total width needed and spacing
+            total_text_width = 0
+            for text, _ in elements:
+                bbox = draw.textbbox((0, 0), text, font=font)
+                text_width = bbox[2] - bbox[0]
+                total_text_width += text_width + 20  # 20px spacing between elements
             
-            # Position timestamp in bottom-right corner with adequate margin
-            timestamp_x = width - text_width - margin - 16  # Account for padding
-            timestamp_y = height - 60  # Increased from 50 for larger font
+            # Start position to center the elements horizontally
+            start_x = (width - total_text_width) // 2
+            start_x = max(margin, start_x)  # Ensure we don't go off-screen
             
-            # Draw timestamp with background box
-            draw_text_with_background(
-                time_text, timestamp_x, timestamp_y, font_small, (255, 255, 255, 255)
-            )
+            # Draw all elements horizontally
+            current_x = start_x
+            for text, text_color in elements:
+                element_width = draw_text_with_background(
+                    text, current_x, bottom_y, font, text_color
+                )
+                current_x += element_width + 20  # 20px spacing between elements
             
             # Convert back to numpy
             result_image = cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)
