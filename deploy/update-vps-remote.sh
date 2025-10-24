@@ -187,28 +187,67 @@ update_monitoring_scripts() {
         'bash -s' << 'REMOTE_SCRIPT'
 #!/bin/bash
 
-# Download latest update script for index.html
-curl -sSL https://raw.githubusercontent.com/lazerusrm/IMGSRV/main/deploy/vps-deploy.sh | \
-    sed -n '/update-monitoring-index.sh/,/^EOF$/p' | \
-    sed '1d;$d' > /usr/local/bin/update-monitoring-index.sh.tmp
+# Simply regenerate index.html with latest GIF
+WEB_ROOT="/var/www/html/monitoring"
+LATEST_GIF=$(ls -t "$WEB_ROOT"/sequence_*.gif 2>/dev/null | head -1)
 
-if [ -s /usr/local/bin/update-monitoring-index.sh.tmp ]; then
-    mv /usr/local/bin/update-monitoring-index.sh.tmp /usr/local/bin/update-monitoring-index.sh
-    chmod +x /usr/local/bin/update-monitoring-index.sh
-    echo "Monitoring script updated"
+if [ -n "$LATEST_GIF" ]; then
+    GIF_NAME=$(basename "$LATEST_GIF")
+    cat > "$WEB_ROOT/index.html" << 'HTML_EOF'
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Woodland Hills City Center - Snow Load Monitoring</title>
+    <meta http-equiv="refresh" content="300">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 10px; background-color: #f0f0f0; }
+        .container { max-width: 100%; margin: 0 auto; background-color: white; border-radius: 8px; 
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden; }
+        .header { background-color: #2c3e50; color: white; padding: 15px; text-align: center; }
+        .header h1 { margin: 0; font-size: 1.5em; }
+        .header h2 { margin: 5px 0 0 0; font-size: 1em; opacity: 0.9; }
+        .content { padding: 15px; text-align: center; }
+        .camera-image { max-width: 100%; height: auto; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .info { margin-top: 15px; color: #666; font-size: 14px; }
+        @media (max-width: 768px) {
+            body { padding: 5px; }
+            .header { padding: 10px; }
+            .header h1 { font-size: 1.3em; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Woodland Hills City Center</h1>
+            <h2>Snow Load Monitoring</h2>
+        </div>
+        <div class="content">
+HTML_EOF
     
-    # Run the script to update index.html
-    /usr/local/bin/update-monitoring-index.sh
-    echo "index.html regenerated"
+    echo "            <img src=\"$GIF_NAME\" alt=\"Snow Load Monitoring GIF\" class=\"camera-image\">" >> "$WEB_ROOT/index.html"
+    
+    cat >> "$WEB_ROOT/index.html" << 'HTML_EOF'
+            <div class="info">
+                <p>GIF updates every 5 minutes</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+HTML_EOF
+    
+    echo "index.html regenerated with $GIF_NAME"
 else
-    echo "Warning: Failed to download monitoring script"
+    echo "Warning: No GIF files found"
 fi
 REMOTE_SCRIPT
     
     if [ $? -eq 0 ]; then
-        log "Monitoring scripts updated"
+        log "index.html regenerated on VPS"
     else
-        warn "Failed to update monitoring scripts"
+        warn "Failed to regenerate index.html"
     fi
 }
 
