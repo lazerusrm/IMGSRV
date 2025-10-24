@@ -1,7 +1,7 @@
 # IMGSRV - Project Context & Architecture
 
-**Version:** 1.2.1  
-**Last Updated:** 2025-10-24  
+**Version:** 1.3.0  
+**Last Updated:** 2025-10-24    
 **Project Type:** Python + Bash deployment scripts  
 **Primary Use:** Snow load monitoring webcam system for Woodland Hills City Center
 
@@ -262,8 +262,9 @@ VPS: /var/www/html/monitoring/   # Public web root
 
 ### 2. Image Processor (`src/services/image_processor.py`)
 - Creates animated GIFs from image sequences
-- Adds timestamp overlays (sanitized to 5-minute intervals)
-- Applies analytics overlays (weather, snow, road status)
+- **Removed Timestamp Overlays:** No longer adds redundant timestamps (handled by analytics overlay)
+- Applies analytics overlays (minimal driver-focused design)
+- **Deprecated Legacy Methods:** `add_timestamp_overlay()` marked as deprecated
 - **GIF Optimization:**
   - Resizes to 1280x720 (from 1920x1080)
   - Color quantization (128-256 colors)
@@ -292,14 +293,19 @@ VPS: /var/www/html/monitoring/   # Public web root
 - **RoadSurfaceAnalyzer:** Analyzes snow/wet/ice coverage via computer vision
 - **WeatherDataClient:** Fetches real-time data from NOAA API
 - **SnowAnalytics:** Combines vision + weather for accurate reporting
-- Provides road status: Clear, Wet, Icy, Slippery, Hazardous, Snow-Covered
+- **Simplified Driver Alerts:** None, Light, Moderate, Heavy, Ice Possible
+- **Raw Image Processing:** Analytics performed on uncompressed camera data for maximum accuracy
+- **24-Hour Forecast Integration:** Provides specific snow/ice alerts with times
 
 ### 6. Analytics Overlay (`src/services/analytics_overlay.py`)
-- Creates semi-transparent info boxes
-- Bottom-right corner placement
-- Displays: location, time, snow depth, temperature, accumulation, road status
-- Color-coded status (green/yellow/orange/red)
-- Mobile-responsive sizing
+- **Minimal Driver-Focused Design:** Clean, readable overlays without backgrounds
+- **Strategic Positioning:** 
+  - Top-left: Location name only ("Woodland Hills City Center")
+  - Bottom-right: Road condition, temperature, forecast alerts
+  - Bottom-right corner: Timestamp
+- **Enhanced Visibility:** Black text outlines for readability against any background
+- **Color-Coded Status:** Green (None), Yellow (Light), Orange (Moderate), Red (Heavy), Purple (Ice Possible)
+- **Deprecated Legacy Methods:** Old overlay system marked as deprecated with warnings
 
 ### 7. Configuration Manager (`src/services/config_manager.py`)
 - Manages `/etc/imgserv/analytics_config.json`

@@ -5,6 +5,41 @@ All notable changes to the Image Sequence Server project will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2025-10-24
+
+### Added - Enhanced Analytics System
+- **Simplified Driver Alerts**: Streamlined road condition categories to None, Light, Moderate, Heavy, Ice Possible
+- **Raw Image Processing**: Analytics now performed on uncompressed camera data for maximum accuracy
+- **24-Hour Forecast Integration**: Added specific snow/ice alerts with exact times (e.g., "Heavy snow expected at 6:00 PM")
+- **Snow Probability Chart**: Added data structure for visualizing snow probability over time
+- **Accumulation Rate Display**: Shows snow accumulation rate or "N/A" when no snow expected
+
+### Changed - Overlay System Redesign
+- **Strategic Positioning**: 
+  - Top-left: Location name only ("Woodland Hills City Center")
+  - Bottom-right: Road condition, temperature, forecast alerts
+  - Bottom-right corner: Timestamp
+- **Enhanced Visibility**: Added black text outlines for readability against any background
+- **Removed Backgrounds**: Clean, minimal design without semi-transparent overlays
+- **Color-Coded Status**: Green (None), Yellow (Light), Orange (Moderate), Red (Heavy), Purple (Ice Possible)
+
+### Fixed - Critical Analytics Issues
+- **Analytics Processing**: Fixed 'snow_analysis' key error in sequence service
+- **Data Structure**: Updated analytics overlay to handle new simplified data structure
+- **Overlay Compatibility**: Added detection for new vs old data structures with deprecation warnings
+- **Default Overlay Style**: Changed from "full" to "minimal" overlay style
+
+### Deprecated - Legacy Systems
+- **Timestamp Overlay**: Removed redundant timestamp overlay from top-left corner
+- **Old Overlay Methods**: Marked legacy overlay methods as deprecated with warnings
+- **Complex Analytics**: Removed snow coverage, snow depth, confidence from primary display
+
+### Improved - Code Quality
+- **Error Handling**: Enhanced error handling in analytics processing
+- **Logging**: Improved logging for analytics data flow
+- **Mobile Overlay**: Updated mobile overlay to use minimal overlay for consistency
+- **Text Visibility**: All text now has outlines for maximum readability
+
 ## [1.2.1] - 2025-10-24
 
 ### Fixed - Critical Installer Issues
