@@ -390,13 +390,19 @@ deploy_vps_key() {
         fi
     fi
     
-    # Get VPS password
-    echo -n "Enter VPS password for ${VPS_USER}@${VPS_HOST}: "
-    read -s VPS_PASSWORD
-    echo ""
+    # Get VPS password from environment or prompt
+    if [ -n "$VPS_PASSWORD" ]; then
+        log "Using VPS password from environment variable"
+    else
+        echo -n "Enter VPS password for ${VPS_USER}@${VPS_HOST}: "
+        read -s VPS_PASSWORD
+        echo ""
+    fi
     
     if [ -z "$VPS_PASSWORD" ]; then
-        warn "Password cannot be empty, skipping VPS key deployment"
+        warn "Password not provided, skipping VPS key deployment"
+        warn "Set VPS_PASSWORD environment variable or run manually:"
+        warn "  ssh-copy-id -i /opt/imgserv/.ssh/vps_key ${VPS_USER}@${VPS_HOST}"
         return 1
     fi
     
@@ -587,6 +593,20 @@ EOF
            ([ -n "$VPS_HOST" ] && [ "$VPS_HOST" != "your-vps-server.com" ] && [ "$VPS_HOST" != "" ]); then
             VPS_CONFIGURED=true
             log "VPS configuration detected: $VPS_HOST"
+        else
+            # Check for any VPS-related settings in the file
+            if grep -q "^VPS_" /etc/imgserv/.env 2>/dev/null; then
+                VPS_CONFIGURED=true
+                # Extract VPS_HOST from the file if not set by source
+                VPS_HOST=$(grep "^VPS_HOST=" /etc/imgserv/.env 2>/dev/null | cut -d'=' -f2 | tr -d '"' | tr -d "'")
+                log "VPS configuration detected from file: $VPS_HOST"
+            else
+                # Try auto-detection
+                if auto_detect_vps; then
+                    VPS_CONFIGURED=true
+                    source /etc/imgserv/.env  # Reload to get auto-detected settings
+                fi
+            fi
         fi
     fi
     
@@ -618,42 +638,31 @@ EOF
                 warn "VPS SSH connection failed - key deployment needed"
                 VPS_CONNECTION_WORKING=false
                 
-                # Offer to fix SSH key with password
-                echo -n "SSH key not working. Deploy/redeploy SSH key with password? [y/N]: "
-                read -r DEPLOY_KEY
+                # Automatically deploy SSH key with password
+                log "Attempting automatic SSH key deployment..."
+                deploy_vps_key
                 
-                if [[ "$DEPLOY_KEY" =~ ^[Yy]$ ]]; then
-                    log "Deploying SSH key with password authentication..."
-                    deploy_vps_key
+                # Test connection again after deployment
+                log "Testing SSH connection after key deployment..."
+                if ssh -i /opt/imgserv/.ssh/vps_key -p ${VPS_PORT:-22} -o StrictHostKeyChecking=no -o ConnectTimeout=10 ${VPS_USER}@${VPS_HOST} "echo 'Connection test OK'" &>/dev/null; then
+                    log "✅ SSH key deployment successful!"
+                    VPS_CONNECTION_WORKING=true
                     
-                    # Test connection again after deployment
-                    log "Testing SSH connection after key deployment..."
-                    if ssh -i /opt/imgserv/.ssh/vps_key -p ${VPS_PORT:-22} -o StrictHostKeyChecking=no -o ConnectTimeout=10 ${VPS_USER}@${VPS_HOST} "echo 'Connection test OK'" &>/dev/null; then
-                        log "✅ SSH key deployment successful!"
-                        VPS_CONNECTION_WORKING=true
-                        
-                        # Test rsync after successful SSH
-                        log "Testing rsync after SSH fix..."
-                        mkdir -p /tmp/test-rsync-$$
-                        echo "test" > /tmp/test-rsync-$$/test.txt
-                        if rsync -avz --delete -e "ssh -i /opt/imgserv/.ssh/vps_key -p ${VPS_PORT:-22} -o StrictHostKeyChecking=no" /tmp/test-rsync-$$ ${VPS_USER}@${VPS_HOST}:/tmp/test-rsync-$$ &>/dev/null; then
-                            log "✅ Rsync working after SSH fix!"
-                            rm -rf /tmp/test-rsync-$$
-                        else
-                            warn "SSH works but rsync failed - VPS may need setup"
-                            echo -n "Would you like to run VPS setup to fix rsync? [y/N]: "
-                            read -r SETUP_VPS
-                            if [[ "$SETUP_VPS" =~ ^[Yy]$ ]]; then
-                                log "Running VPS setup..."
-                                ssh -i /opt/imgserv/.ssh/vps_key -p ${VPS_PORT:-22} -o StrictHostKeyChecking=no -o ConnectTimeout=10 ${VPS_USER}@${VPS_HOST} "curl -sSL https://raw.githubusercontent.com/lazerusrm/IMGSRV/main/deploy/vps-deploy.sh | bash" || warn "VPS setup failed"
-                            fi
-                        fi
+                    # Test rsync after successful SSH
+                    log "Testing rsync after SSH fix..."
+                    mkdir -p /tmp/test-rsync-$$
+                    echo "test" > /tmp/test-rsync-$$/test.txt
+                    if rsync -avz --delete -e "ssh -i /opt/imgserv/.ssh/vps_key -p ${VPS_PORT:-22} -o StrictHostKeyChecking=no" /tmp/test-rsync-$$ ${VPS_USER}@${VPS_HOST}:/tmp/test-rsync-$$ &>/dev/null; then
+                        log "✅ Rsync working after SSH fix!"
+                        rm -rf /tmp/test-rsync-$$
                     else
-                        warn "SSH key deployment failed - manual setup may be required"
+                        warn "SSH works but rsync failed - VPS may need setup"
+                        log "Running VPS setup to fix rsync..."
+                        ssh -i /opt/imgserv/.ssh/vps_key -p ${VPS_PORT:-22} -o StrictHostKeyChecking=no -o ConnectTimeout=10 ${VPS_USER}@${VPS_HOST} "curl -sSL https://raw.githubusercontent.com/lazerusrm/IMGSRV/main/deploy/vps-deploy.sh | bash" || warn "VPS setup failed"
                     fi
                 else
-                    warn "Skipping SSH key deployment. Manual setup required:"
-                    warn "  ssh-copy-id -i /opt/imgserv/.ssh/vps_key ${VPS_USER}@${VPS_HOST}"
+                    warn "SSH key deployment failed - manual setup may be required"
+                    warn "Run: ssh-copy-id -i /opt/imgserv/.ssh/vps_key ${VPS_USER}@${VPS_HOST}"
                 fi
             fi
         fi
@@ -989,6 +998,39 @@ show_completion_info() {
     fi
 }
 
+# Function to auto-detect and configure VPS settings
+auto_detect_vps() {
+    log "Auto-detecting VPS configuration..."
+    
+    # Check if we can detect VPS from common patterns
+    if [ -f /etc/imgserv/.env ]; then
+        # Look for any VPS-related settings
+        if grep -q "198\.23\.249\.133" /etc/imgserv/.env 2>/dev/null; then
+            log "Detected Woodland Hills VPS configuration"
+            VPS_HOST="198.23.249.133"
+            VPS_USER="root"
+            VPS_PORT="22"
+            VPS_PATH="/var/www/html/monitoring"
+            
+            # Update .env file with proper VPS settings
+            if ! grep -q "^VPS_ENABLED=true" /etc/imgserv/.env 2>/dev/null; then
+                echo "" >> /etc/imgserv/.env
+                echo "# VPS Configuration (Auto-detected)" >> /etc/imgserv/.env
+                echo "VPS_ENABLED=true" >> /etc/imgserv/.env
+                echo "VPS_HOST=$VPS_HOST" >> /etc/imgserv/.env
+                echo "VPS_USER=$VPS_USER" >> /etc/imgserv/.env
+                echo "VPS_PORT=$VPS_PORT" >> /etc/imgserv/.env
+                echo "VPS_PATH=$VPS_PATH" >> /etc/imgserv/.env
+                log "VPS settings auto-configured in /etc/imgserv/.env"
+            fi
+            
+            return 0
+        fi
+    fi
+    
+    return 1
+}
+
 # Function to help configure VPS settings
 configure_vps_settings() {
     log "VPS configuration helper"
@@ -1087,15 +1129,7 @@ main() {
         fi
     else
         log "No VPS configuration detected, camera server setup only"
-        echo ""
-        echo -n "Would you like to configure VPS settings now? [y/N]: "
-        read -r CONFIGURE_VPS_NOW
-        
-        if [[ "$CONFIGURE_VPS_NOW" =~ ^[Yy]$ ]]; then
-            configure_vps_settings
-        else
-            log "To enable VPS sync later, configure VPS_HOST in /etc/imgserv/.env and run installer again"
-        fi
+        log "To enable VPS sync, configure VPS_HOST in /etc/imgserv/.env and run installer again"
     fi
     
     verify_installation
