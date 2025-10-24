@@ -91,6 +91,12 @@ def create_app(settings: Settings) -> FastAPI:
             service = app.state.sequence_service
             latest_sequence = await service.get_latest_sequence()
             
+            # Get current update interval from config
+            from src.services.config_manager import ConfigManager
+            config_mgr = ConfigManager(settings)
+            config = config_mgr.get_config()
+            update_interval = config.get("sequence_update_interval_minutes", 5)
+            
             if not latest_sequence or not latest_sequence.exists():
                 return HTMLResponse("""
                 <!DOCTYPE html>
@@ -117,7 +123,7 @@ def create_app(settings: Settings) -> FastAPI:
             <html>
             <head>
                 <title>Woodland Hills City Center - Snow Load Monitoring</title>
-                <meta http-equiv="refresh" content="300">
+                <meta http-equiv="refresh" content="{update_interval * 60}">
                 <style>
                     body {{
                         font-family: Arial, sans-serif;
@@ -181,9 +187,9 @@ def create_app(settings: Settings) -> FastAPI:
                     <div class="content">
                         <img src="/sequence/latest" alt="Snow Load Monitoring GIF" class="camera-image">
             <div class="info">
-                <p>GIF updates every 5 minutes</p>
+                <p>GIF updates every {update_interval} {'minute' if update_interval == 1 else 'minutes'}</p>
                 <div class="refresh-info">
-                    Page refreshes automatically every 5 minutes
+                    Page refreshes automatically every {update_interval} {'minute' if update_interval == 1 else 'minutes'}
                 </div>
                 <div class="config-link">
                     <a href="/config" style="color: #3498db; text-decoration: none; font-size: 0.9em;">
@@ -245,6 +251,12 @@ def create_app(settings: Settings) -> FastAPI:
             service = app.state.sequence_service
             latest_sequence = await service.get_latest_sequence()
             
+            # Get current update interval from config
+            from src.services.config_manager import ConfigManager
+            config_mgr = ConfigManager(settings)
+            config = config_mgr.get_config()
+            update_interval = config.get("sequence_update_interval_minutes", 5)
+            
             if not latest_sequence or not latest_sequence.exists():
                 return HTMLResponse("""
                 <!DOCTYPE html>
@@ -284,7 +296,7 @@ def create_app(settings: Settings) -> FastAPI:
             <html>
             <head>
                 <title>Snow Load Monitoring</title>
-                <meta http-equiv="refresh" content="300">
+                <meta http-equiv="refresh" content="{update_interval * 60}">
                 <style>
                     body {{
                         font-family: Arial, sans-serif;
@@ -341,7 +353,7 @@ def create_app(settings: Settings) -> FastAPI:
                     <div class="content">
                         <img src="/sequence/latest" alt="Snow Load Monitoring GIF" class="camera-image">
                         <div class="info">
-                            <p>GIF updates every 5 minutes</p>
+                            <p>GIF updates every {update_interval} {'minute' if update_interval == 1 else 'minutes'}</p>
                         </div>
                     </div>
                 </div>
