@@ -1,6 +1,6 @@
 # IMGSRV - Project Context & Architecture
 
-**Version:** 1.2.0  
+**Version:** 1.2.1  
 **Last Updated:** 2025-10-24  
 **Project Type:** Python + Bash deployment scripts  
 **Primary Use:** Snow load monitoring webcam system for Woodland Hills City Center
@@ -371,8 +371,8 @@ Managed via web UI at `http://camera-server:8080/config`
   "analytics_enabled": true,
   "analytics_update_interval_minutes": 5,
   "weather_api_enabled": true,
-  "weather_latitude": 40.011771,
-  "weather_longitude": -111.648000,
+  "weather_latitude": 40.011757,
+  "weather_longitude": -111.648119,
   "weather_location_name": "Woodland Hills City, Utah",
   "analytics_overlay_enabled": true,
   "analytics_overlay_style": "minimal",
@@ -383,9 +383,19 @@ Managed via web UI at `http://camera-server:8080/config`
   "max_images_per_sequence": 10,
   "gif_frame_duration_seconds": 1.0,
   "gif_optimization_level": "balanced",
+  "road_roi_points": [],
+  "road_roi_enabled": false,
   "last_updated": "2025-10-24T..."
 }
 ```
+
+**Interactive ROI Configuration:**
+- **Canvas-based polygon editor** for defining road monitoring regions
+- **Click-to-add points** (4-12 points) on live camera feed
+- **Normalized coordinates** (0-1 scale) for resolution independence
+- **Visual feedback** with blue overlay and red first point marker
+- **Test functionality** to preview ROI on road detection visualization
+- **Enable/disable toggle** to switch between custom and default detection
 
 **Configuration Changes Apply Immediately** - Service auto-reloads capture loop.
 
@@ -447,14 +457,24 @@ curl -sSL https://raw.githubusercontent.com/lazerusrm/IMGSRV/main/autoinstall.sh
 ### What the Installer Does
 
 **Camera Server:**
-1. Installs system dependencies (ffmpeg, python3, nginx, jq, rsync, etc.)
+1. Installs system dependencies (ffmpeg, python3, nginx, jq, rsync, sshpass, etc.)
 2. Creates imgserv user and directories
 3. Clones repository to /opt/imgserv
 4. Sets up Python venv and installs packages
 5. Creates systemd service
 6. Configures nginx reverse proxy
-7. Generates SSH key pair for VPS sync
-8. Starts service
+7. **ENHANCED VPS CONFIGURATION DETECTION:**
+   - Automatically detects existing VPS configuration in /etc/imgserv/.env
+   - Preserves VPS settings during environment file updates
+   - Auto-detects Woodland Hills VPS (198.23.249.133) from existing config
+   - Excludes false positives (0.0.0.0, local IPs) from detection
+8. **INTELLIGENT SSH KEY MANAGEMENT:**
+   - Preserves existing SSH keys if they exist and work
+   - Validates SSH key integrity (regenerates corrupted keys)
+   - Automatically deploys SSH key to VPS when configuration detected
+   - Single password prompt for SSH key deployment
+   - Tests SSH and RSYNC connectivity after deployment
+9. Starts service
 
 **VPS Server (if configured):**
 1. Installs nginx, openssl, ufw
@@ -834,6 +854,13 @@ ssh -i /opt/imgserv/.ssh/vps_key root@198.23.249.133 "ufw status"
 8. **Preserve security:** Never expose camera credentials, keep config on camera server
 9. **Test SSL carefully:** Let's Encrypt rate limits (5 certs/week/domain)
 10. **Validate all configs:** Use ConfigManager validation before applying
+11. **ENSURE IDEMPOTENCY:** All installers and scripts must be safe to run multiple times
+12. **PRESERVE EXISTING KEYS:** Never regenerate SSH keys if they exist and work
+13. **TEST CONNECTIVITY:** Always verify SSH/RSYNC before making changes
+14. **VALIDATE VPS STATE:** Check nginx/SSL status before offering setup options
+15. **PRESERVE VPS CONFIG:** Never overwrite existing VPS settings in .env files
+16. **AUTO-DETECT VPS:** Use intelligent detection patterns for VPS configuration
+17. **SINGLE PASSWORD PROMPT:** Deploy SSH keys automatically, prompt password only once
 
 ### Common Mistakes to Avoid:
 
@@ -845,6 +872,12 @@ ssh -i /opt/imgserv/.ssh/vps_key root@198.23.249.133 "ufw status"
 - ❌ DON'T assume VPS has same packages as camera server
 - ❌ DON'T forget to reload service after config changes
 - ❌ DON'T break RSYNC (it's the critical link)
+- ❌ DON'T regenerate SSH keys if they exist and work
+- ❌ DON'T run installers without testing connectivity first
+- ❌ DON'T assume VPS needs setup without checking current state
+- ❌ DON'T overwrite existing VPS settings in .env files
+- ❌ DON'T prompt for password multiple times (deploy SSH key once)
+- ❌ DON'T detect 0.0.0.0 or local IPs as VPS configurations
 
 ### Testing Checklist:
 

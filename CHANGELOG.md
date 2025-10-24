@@ -5,6 +5,53 @@ All notable changes to the Image Sequence Server project will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2025-10-24
+
+### Fixed - Critical Installer Issues
+- **VPS Configuration Detection**: Fixed installer not detecting existing VPS configuration
+  - Enhanced detection to check for VPS_ENABLED=true OR existing VPS_HOST setting
+  - Added auto-detection for Woodland Hills VPS (198.23.249.133) from existing config
+  - Excluded false positives (0.0.0.0, local IPs) from VPS detection
+  - Added comprehensive debugging output to show detection process
+- **Environment File Preservation**: Fixed installer overwriting VPS settings
+  - Preserves existing VPS settings during environment file updates
+  - Backs up VPS configuration before creating new .env file
+  - Restores VPS settings after basic configuration is written
+  - Prevents loss of VPS_HOST, VPS_ENABLED, and other VPS settings
+- **SSH Key Management**: Fixed multiple password prompts and key deployment
+  - Automatically deploys SSH key to VPS when configuration detected
+  - Single password prompt for SSH key deployment (no more multiple prompts)
+  - Validates SSH key integrity and regenerates corrupted keys
+  - Tests SSH and RSYNC connectivity after key deployment
+  - Preserves existing SSH keys if they work properly
+- **Order of Operations**: Fixed VPS detection running before environment file creation
+  - Moved VPS detection to happen AFTER environment file is created/preserved
+  - Ensures preserved VPS settings are detected properly
+  - Prevents false positive detection of default HOST setting
+
+### Improved - Installer Reliability
+- **Enhanced Auto-Detection**: Multiple detection patterns for VPS configuration
+  - Looks for specific IP addresses (198.23.249.133)
+  - Looks for domain references (woodlandhillswebcam, industrialcamera)
+  - Extracts any external IP addresses from .env file
+  - Filters out local network IPs (192.168.x.x, 127.0.0.1, 0.0.0.0)
+- **Intelligent SSH Key Handling**: Smart key management and deployment
+  - Checks if existing SSH key is valid/corrupted
+  - Regenerates corrupted keys automatically
+  - Uses sshpass for password-based SSH key deployment
+  - Falls back to manual instructions if password not provided
+- **Comprehensive Testing**: Enhanced connectivity and functionality testing
+  - Tests SSH connection with deployed key
+  - Tests RSYNC functionality in both directions
+  - Offers VPS setup if SSH works but RSYNC fails
+  - Provides clear status messages and next steps
+
+### Changed - User Experience
+- **Zero-Input Operation**: Removed interactive prompts for VPS configuration
+- **Automatic Recovery**: Installer can now recover from broken SSH keys and VPS issues
+- **Clear Status Messages**: Better feedback about what the installer is doing
+- **Idempotent Operation**: Safe to run multiple times without side effects
+
 ## [1.3.0] - 2025-10-24
 
 ### Added - Major Features

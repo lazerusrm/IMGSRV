@@ -69,6 +69,17 @@ curl -sSL https://raw.githubusercontent.com/lazerusrm/IMGSRV/main/autoinstall.sh
 - ✅ Automatic VPS deployment and SSL setup
 - ✅ Non-interactive mode support (environment variables)
 - ✅ Graceful error handling
+- ✅ **ENHANCED VPS CONFIGURATION DETECTION:**
+  - Automatically detects existing VPS configuration
+  - Preserves VPS settings during environment file updates
+  - Auto-detects common VPS configurations
+  - Excludes false positives (0.0.0.0, local IPs)
+- ✅ **INTELLIGENT SSH KEY MANAGEMENT:**
+  - Preserves existing SSH keys if they work
+  - Validates SSH key integrity (regenerates corrupted keys)
+  - Automatically deploys SSH key to VPS when configuration detected
+  - Single password prompt for SSH key deployment
+  - Tests SSH and RSYNC connectivity after deployment
 
 ### ⚙️ Non-Interactive Installation
 
