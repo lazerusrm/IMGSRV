@@ -81,6 +81,134 @@ check_requirements() {
     log "System requirements check passed (Python $python_version)"
 }
 
+# Interactive configuration prompts
+prompt_user_config() {
+    info "=== Interactive Configuration Setup ==="
+    echo ""
+    
+    # Check if we're in an interactive terminal
+    if [ ! -t 0 ]; then
+        log "Non-interactive mode detected, using environment variables or defaults"
+        DOMAIN_NAME="${DOMAIN_NAME:-}"
+        SSL_EMAIL="${SSL_EMAIL:-}"
+        VPS_IP="${VPS_IP:-}"
+        VPS_USER="${VPS_USER:-root}"
+        CAMERA_IP="${CAMERA_IP:-192.168.1.110}"
+        CAMERA_USER="${CAMERA_USER:-admin}"
+        CAMERA_PASS="${CAMERA_PASS:-123456}"
+        VPS_PASSWORD="${VPS_PASSWORD:-}"
+        return 0
+    fi
+    
+    echo -e "${BLUE}This installer can optionally configure a public-facing VPS for serving content.${NC}"
+    echo -e "${BLUE}If you skip VPS configuration, the system will only run on the camera server.${NC}"
+    echo ""
+    
+    # Ask if user wants VPS setup
+    read -p "Do you want to configure a public VPS? (y/N): " setup_vps
+    
+    if [[ $setup_vps =~ ^[Yy]$ ]]; then
+        SETUP_VPS="true"
+        
+        # Domain configuration
+        echo ""
+        echo -e "${GREEN}=== SSL Certificate Configuration ===${NC}"
+        read -p "Enter your domain name (e.g., webcam.example.com): " DOMAIN_NAME
+        
+        while [[ -z "$DOMAIN_NAME" ]]; do
+            error "Domain name cannot be empty"
+            read -p "Enter your domain name: " DOMAIN_NAME
+        done
+        
+        read -p "Enter email for SSL certificates (for Let's Encrypt): " SSL_EMAIL
+        
+        while [[ -z "$SSL_EMAIL" ]]; do
+            error "Email cannot be empty"
+            read -p "Enter email: " SSL_EMAIL
+        done
+        
+        # VPS configuration
+        echo ""
+        echo -e "${GREEN}=== VPS Server Configuration ===${NC}"
+        read -p "Enter VPS IP address: " VPS_IP
+        
+        while [[ -z "$VPS_IP" ]]; do
+            error "VPS IP cannot be empty"
+            read -p "Enter VPS IP: " VPS_IP
+        done
+        
+        read -p "Enter VPS username [default: root]: " VPS_USER
+        VPS_USER=${VPS_USER:-root}
+        
+        read -sp "Enter VPS password (for initial SSH key setup): " VPS_PASSWORD
+        echo ""
+        
+        while [[ -z "$VPS_PASSWORD" ]]; do
+            error "VPS password cannot be empty"
+            read -sp "Enter VPS password: " VPS_PASSWORD
+            echo ""
+        done
+    else
+        SETUP_VPS="false"
+        log "Skipping VPS configuration - camera server only mode"
+    fi
+    
+    # Camera configuration
+    echo ""
+    echo -e "${GREEN}=== Camera Configuration ===${NC}"
+    read -p "Enter camera IP [default: 192.168.1.110]: " CAMERA_IP
+    CAMERA_IP=${CAMERA_IP:-192.168.1.110}
+    
+    read -p "Enter camera username [default: admin]: " CAMERA_USER
+    CAMERA_USER=${CAMERA_USER:-admin}
+    
+    read -sp "Enter camera password [default: 123456]: " CAMERA_PASS
+    echo ""
+    CAMERA_PASS=${CAMERA_PASS:-123456}
+    
+    # Validation
+    if [[ "$SETUP_VPS" == "true" ]]; then
+        validate_inputs
+    fi
+    
+    echo ""
+    log "Configuration collected successfully"
+}
+
+# Validate user inputs
+validate_inputs() {
+    log "Validating inputs..."
+    
+    # Validate domain (basic DNS check)
+    if ! [[ $DOMAIN_NAME =~ ^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$ ]]; then
+        error "Invalid domain name format: $DOMAIN_NAME"
+        exit 1
+    fi
+    
+    # Validate email
+    if ! [[ $SSL_EMAIL =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
+        error "Invalid email format: $SSL_EMAIL"
+        exit 1
+    fi
+    
+    # Validate IP
+    if ! [[ $VPS_IP =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
+        error "Invalid VPS IP address: $VPS_IP"
+        exit 1
+    fi
+    
+    # Validate each IP octet is <= 255
+    IFS='.' read -ra ADDR <<< "$VPS_IP"
+    for i in "${ADDR[@]}"; do
+        if [ "$i" -gt 255 ]; then
+            error "Invalid VPS IP address: $VPS_IP (octet > 255)"
+            exit 1
+        fi
+    done
+    
+    log "Input validation passed"
+}
+
 # Detect OS and set package manager
 detect_os() {
     if [[ -f /etc/debian_version ]]; then
@@ -215,11 +343,16 @@ run_installer() {
     # Make installer executable
     chmod +x deploy/install.sh
     
+    # Use configured camera settings or defaults
+    local camera_ip="${CAMERA_IP:-192.168.1.110}"
+    local camera_user="${CAMERA_USER:-admin}"
+    local camera_pass="${CAMERA_PASS:-123456}"
+    
     # Run installer with production settings and error handling
     if ./deploy/install.sh --production \
-        --camera-ip 192.168.1.110 \
-        --camera-user admin \
-        --camera-pass 123456; then
+        --camera-ip "$camera_ip" \
+        --camera-user "$camera_user" \
+        --camera-pass "$camera_pass"; then
         log "Main installer completed successfully"
     else
         warn "Main installer had issues, but continuing with manual setup..."
@@ -548,6 +681,129 @@ verify_installation() {
     log "Installation verification completed"
 }
 
+# Check DNS propagation with retry logic
+check_dns_propagation() {
+    log "Checking DNS propagation for $DOMAIN_NAME..."
+    
+    # Check if dig is installed
+    if ! command -v dig &> /dev/null; then
+        warn "dig not installed, installing dnsutils..."
+        if [[ "$OS" == "debian" ]]; then
+            safe_apt_install dnsutils
+        elif [[ "$OS" == "redhat" ]]; then
+            yum install -y bind-utils || true
+        fi
+    fi
+    
+    local max_attempts=30
+    local attempt=1
+    
+    while [ $attempt -le $max_attempts ]; do
+        local resolved_ip=$(dig +short "$DOMAIN_NAME" @8.8.8.8 | tail -n1)
+        
+        if [ "$resolved_ip" == "$VPS_IP" ]; then
+            log "DNS propagation confirmed: $DOMAIN_NAME -> $VPS_IP"
+            return 0
+        fi
+        
+        if [ $attempt -eq 1 ]; then
+            warn "DNS not propagated yet (got: '$resolved_ip', expected: '$VPS_IP')"
+            echo ""
+            echo -e "${YELLOW}DNS Propagation Check${NC}"
+            echo "Your domain '$DOMAIN_NAME' must point to your VPS IP '$VPS_IP'"
+            echo "Current DNS resolution: ${resolved_ip:-'(not resolved)'}"
+            echo ""
+            echo "Please ensure your domain's A record points to $VPS_IP"
+            echo "Checking every 10 seconds (up to 5 minutes)..."
+            echo ""
+        fi
+        
+        warn "Attempt $attempt/$max_attempts: Waiting for DNS..."
+        sleep 10
+        ((attempt++))
+    done
+    
+    warn "DNS propagation not confirmed after $max_attempts attempts"
+    echo ""
+    read -p "Continue anyway? (y/N): " continue_anyway
+    if [[ $continue_anyway =~ ^[Yy]$ ]]; then
+        warn "Continuing without DNS propagation confirmation"
+        return 0
+    else
+        error "DNS propagation required for SSL setup. Exiting."
+        exit 1
+    fi
+}
+
+# Setup VPS with automation
+setup_vps_with_automation() {
+    info "=== Setting up VPS with SSL automation ==="
+    
+    # Deploy VPS infrastructure
+    if [[ -f "$INSTALL_DIR/deploy/setup-vps.sh" ]]; then
+        log "Running automated VPS setup..."
+        cd "$INSTALL_DIR/deploy"
+        
+        # Pass VPS credentials
+        export VPS_HOST="$VPS_IP"
+        export VPS_USER="$VPS_USER"
+        export VPS_PASSWORD="$VPS_PASSWORD"
+        
+        if bash setup-vps.sh "$VPS_IP" "$VPS_USER"; then
+            log "VPS deployment successful"
+        else
+            error "VPS deployment failed"
+            return 1
+        fi
+    else
+        error "VPS setup script not found at $INSTALL_DIR/deploy/setup-vps.sh"
+        return 1
+    fi
+    
+    # Check DNS and setup SSL
+    log "Proceeding with SSL certificate setup..."
+    check_dns_propagation
+    setup_ssl_with_retry
+}
+
+# Setup SSL with retry logic
+setup_ssl_with_retry() {
+    log "Setting up SSL certificate for $DOMAIN_NAME..."
+    
+    if [[ ! -f "$INSTALL_DIR/deploy/setup-ssl-remote.sh" ]]; then
+        error "SSL setup script not found"
+        return 1
+    fi
+    
+    local max_attempts=3
+    local attempt=1
+    
+    while [ $attempt -le $max_attempts ]; do
+        log "SSL setup attempt $attempt/$max_attempts..."
+        
+        cd "$INSTALL_DIR/deploy"
+        if bash setup-ssl-remote.sh "$SSL_EMAIL" "$DOMAIN_NAME"; then
+            log "SSL setup successful"
+            log "Your site is now accessible at: https://$DOMAIN_NAME"
+            return 0
+        fi
+        
+        warn "SSL setup attempt $attempt/$max_attempts failed"
+        
+        if [ $attempt -lt $max_attempts ]; then
+            log "Waiting 30 seconds before retry..."
+            sleep 30
+        fi
+        
+        ((attempt++))
+    done
+    
+    error "SSL setup failed after $max_attempts attempts"
+    warn "You can manually run SSL setup later with:"
+    warn "  cd $INSTALL_DIR/deploy && bash setup-ssl-remote.sh $SSL_EMAIL $DOMAIN_NAME"
+    return 1
+}
+
 # Display completion information
 show_completion_info() {
     echo ""
@@ -622,12 +878,25 @@ main() {
     # Run installation steps
     check_root
     check_requirements
+    
+    # Interactive configuration prompts
+    prompt_user_config
+    
     detect_os
     update_system
     install_dependencies
     clone_repository
     run_installer
     restart_service
+    
+    # VPS setup if configured
+    if [[ "$SETUP_VPS" == "true" ]]; then
+        log "VPS configuration requested, proceeding with VPS setup..."
+        setup_vps_with_automation || warn "VPS setup had issues, continuing with camera server setup"
+    else
+        log "No VPS configuration requested, camera server setup only"
+    fi
+    
     verify_installation
     show_completion_info
 }
