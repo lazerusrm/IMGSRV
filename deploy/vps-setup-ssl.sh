@@ -140,8 +140,7 @@ obtain_certificate() {
         --email "$EMAIL" \
         --redirect \
         --hsts \
-        --staple-ocsp \
-        --must-staple
+        --staple-ocsp
     
     if [ $? -eq 0 ]; then
         log "SSL certificate obtained successfully!"
