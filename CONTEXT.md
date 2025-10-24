@@ -393,24 +393,82 @@ Managed via web UI at `http://camera-server:8080/config`
 
 ## Deployment Process
 
-### Initial Camera Server Setup
+### Interactive Installation (Recommended)
+
+The installer now supports interactive configuration for streamlined setup:
 
 ```bash
-# One-command installation
+# Interactive installation with prompts
 curl -sSL https://raw.githubusercontent.com/lazerusrm/IMGSRV/main/autoinstall.sh | bash
 
-# What it does:
-# 1. Installs system dependencies (ffmpeg, python3, nginx, etc.)
-# 2. Creates imgserv user and directories
-# 3. Clones repository to /opt/imgserv
-# 4. Sets up Python venv and installs packages
-# 5. Creates systemd service
-# 6. Configures nginx reverse proxy
-# 7. Generates self-signed SSL certificates
-# 8. Starts service
+# You will be prompted for:
+# 1. VPS setup (y/N) - optional
+# 2. Domain name (e.g., webcam.example.com)
+# 3. SSL email (for Let's Encrypt)
+# 4. VPS IP address
+# 5. VPS username (default: root)
+# 6. VPS password (for SSH key setup)
+# 7. Camera IP (default: 192.168.1.110)
+# 8. Camera username (default: admin)
+# 9. Camera password (default: 123456)
+
+# Features:
+# - Input validation (domain format, email format, IP validation)
+# - DNS propagation check with 30 retries (5 minutes)
+# - Automatic VPS deployment
+# - SSL certificate setup with 3 retries
+# - Graceful error handling
+# - Non-interactive mode support (env vars)
 ```
 
-### Initial VPS Setup
+### Non-Interactive Installation
+
+For automated deployments or CI/CD, set environment variables:
+
+```bash
+# Camera-only setup (no VPS)
+CAMERA_IP=192.168.1.110 \
+CAMERA_USER=admin \
+CAMERA_PASS=123456 \
+curl -sSL https://raw.githubusercontent.com/lazerusrm/IMGSRV/main/autoinstall.sh | bash
+
+# Full setup with VPS
+DOMAIN_NAME=webcam.example.com \
+SSL_EMAIL=admin@example.com \
+VPS_IP=198.23.249.133 \
+VPS_USER=root \
+VPS_PASSWORD=secretpassword \
+CAMERA_IP=192.168.1.110 \
+CAMERA_USER=admin \
+CAMERA_PASS=123456 \
+curl -sSL https://raw.githubusercontent.com/lazerusrm/IMGSRV/main/autoinstall.sh | bash
+```
+
+### What the Installer Does
+
+**Camera Server:**
+1. Installs system dependencies (ffmpeg, python3, nginx, jq, rsync, etc.)
+2. Creates imgserv user and directories
+3. Clones repository to /opt/imgserv
+4. Sets up Python venv and installs packages
+5. Creates systemd service
+6. Configures nginx reverse proxy
+7. Generates SSH key pair for VPS sync
+8. Starts service
+
+**VPS Server (if configured):**
+1. Installs nginx, openssl, ufw
+2. Creates web directories at /var/www/html/monitoring
+3. Configures nginx with self-signed SSL
+4. Sets up imgserv user for RSYNC
+5. Configures firewall (ports 80, 443, 22)
+6. Checks DNS propagation
+7. Installs Let's Encrypt SSL certificate
+8. Creates monitoring scripts
+
+### Manual VPS Setup (Alternative)
+
+If you prefer manual VPS setup or the automated setup fails:
 
 ```bash
 # Option 1: Automated from camera server
@@ -418,14 +476,6 @@ sudo bash /opt/imgserv/deploy/setup-vps.sh <vps-ip> <vps-user> <vps-password>
 
 # Option 2: Manual on VPS
 curl -sSL https://raw.githubusercontent.com/lazerusrm/IMGSRV/main/deploy/vps-deploy.sh | bash
-
-# What it does:
-# 1. Installs nginx, openssl, ufw
-# 2. Creates web directories at /var/www/html/monitoring
-# 3. Configures nginx with self-signed SSL
-# 4. Sets up imgserv user for RSYNC
-# 5. Configures firewall (ports 80, 443, 22)
-# 6. Creates monitoring scripts
 ```
 
 ### SSH Key Setup (Camera → VPS)
@@ -438,7 +488,8 @@ curl -sSL https://raw.githubusercontent.com/lazerusrm/IMGSRV/main/deploy/vps-dep
 # Public key must be added to VPS:
 # /root/.ssh/authorized_keys
 
-# Autoinstaller prompts to deploy key automatically
+# Interactive installer handles this automatically
+# Manual: ssh-copy-id -i /opt/imgserv/.ssh/vps_key root@<vps-ip>
 ```
 
 ### SSL Certificate Setup (Let's Encrypt)
@@ -816,8 +867,12 @@ ssh -i /opt/imgserv/.ssh/vps_key root@198.23.249.133 "ufw status"
 - **Public Website:** https://woodlandhillswebcam.industrialcamera.com
 - **Camera Server API:** http://localhost:8080 (internal only)
 - **Configuration UI:** http://localhost:8080/config (internal only)
+  - Interactive configuration page with live road detection visualization
+  - Inline road boundary display with metadata (road pixels, coverage %, contours)
+  - Refresh button for real-time boundary visualization
+  - All settings save without service restart
 - **Analytics API:** http://localhost:8080/analytics (internal only)
-- **Road Boundaries:** http://localhost:8080/analytics/road-boundaries (internal only)
+- **Road Boundaries:** http://localhost:8080/analytics/road-boundaries (internal only, embedded in config page)
 
 ### Key Paths
 - **Camera Server Code:** /opt/imgserv

@@ -34,7 +34,11 @@ A secure, efficient service for capturing IP camera snapshots and generating tra
 - **GIF Optimization**: Balanced compression (1280x720, 60-80% file size reduction)
 - **Snow Load Analytics**: Computer vision-based road surface condition analysis
 - **Weather Data Integration**: Real-time weather data from NOAA API
-- **Road Boundary Visualization**: Debug endpoint to verify detection areas
+- **Road Boundary Visualization**: Embedded inline visualization with refresh button in config page (no separate tab needed)
+  - Real-time road detection overlay
+  - Metadata display (road pixels, coverage %, contours, timestamp)
+  - Spinning refresh animation
+  - Automatic loading on page load
 - **Security Hardened**: Rate limiting, input validation, HTTPS, and isolation
 - **Let's Encrypt SSL**: Automated SSL certificate generation and renewal
 - **Resource Optimized**: Minimal memory and CPU usage for LXC containers
@@ -44,11 +48,46 @@ A secure, efficient service for capturing IP camera snapshots and generating tra
 
 ## Quick Start
 
-### 🚀 One-Command Installation (Linux)
+### 🚀 Interactive Installation (Recommended)
 
-**Single Universal Installer (Handles all cases including package conflicts):**
+**One-command installation with interactive prompts:**
 
 ```bash
+curl -sSL https://raw.githubusercontent.com/lazerusrm/IMGSRV/main/autoinstall.sh | bash
+```
+
+**You will be prompted for:**
+- VPS setup (optional) - configure public-facing server
+- Domain name for SSL certificates
+- Email for Let's Encrypt
+- VPS IP, username, and password
+- Camera IP, username, and password
+
+**Features:**
+- ✅ Input validation (domain, email, IP)
+- ✅ DNS propagation check with retry logic
+- ✅ Automatic VPS deployment and SSL setup
+- ✅ Non-interactive mode support (environment variables)
+- ✅ Graceful error handling
+
+### ⚙️ Non-Interactive Installation
+
+For automated deployments or scripts:
+
+```bash
+# Camera-only setup
+CAMERA_IP=192.168.1.110 CAMERA_USER=admin CAMERA_PASS=123456 \
+curl -sSL https://raw.githubusercontent.com/lazerusrm/IMGSRV/main/autoinstall.sh | bash
+
+# Full setup with VPS
+DOMAIN_NAME=webcam.example.com \
+SSL_EMAIL=admin@example.com \
+VPS_IP=198.23.249.133 \
+VPS_USER=root \
+VPS_PASSWORD=secretpassword \
+CAMERA_IP=192.168.1.110 \
+CAMERA_USER=admin \
+CAMERA_PASS=123456 \
 curl -sSL https://raw.githubusercontent.com/lazerusrm/IMGSRV/main/autoinstall.sh | bash
 ```
 
