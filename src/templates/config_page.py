@@ -585,6 +585,16 @@ def create_config_page_html(config_data: Dict[str, Any]) -> str:
             config.max_images_per_sequence = parseInt(config.max_images_per_sequence);
             config.gif_frame_duration_seconds = parseFloat(config.gif_frame_duration_seconds);
             
+            // Parse ROI points if present
+            if (config.road_roi_points) {
+                try {
+                    config.road_roi_points = JSON.parse(config.road_roi_points);
+                } catch (e) {
+                    console.error('Failed to parse ROI points:', e);
+                    config.road_roi_points = [];
+                }
+            }
+            
             try {{
                 const response = await fetch('/config/analytics', {{
                     method: 'POST',
