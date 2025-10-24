@@ -371,35 +371,35 @@ def create_app(settings: Settings) -> FastAPI:
         """Health check endpoint."""
         return {"status": "healthy", "service": "image-sequence-server"}
     
-@app.get("/analytics")
-@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
-async def get_analytics(request: Request):
-    """Get current road condition for drivers."""
-    try:
-        service = app.state.sequence_service
-        if not service.analytics:
-            return {"error": "Analytics not enabled"}
-        
-        # Get latest analysis
-        if service.analytics.historical_data:
-            latest = service.analytics.historical_data[-1]
+    @app.get("/analytics")
+    @limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+    async def get_analytics(request: Request):
+        """Get current road condition for drivers."""
+        try:
+            service = app.state.sequence_service
+            if not service.analytics:
+                return {"error": "Analytics not enabled"}
             
-            # Return driver-focused data only
-            return {
-                "timestamp": latest["timestamp"],
-                "road_condition": latest["road_condition"],
-                "temperature": latest["temperature"],
-                "conditions": latest["conditions"],
-                "accumulation_rate": latest.get("accumulation_rate"),
-                "forecast_alerts": latest.get("forecast_alerts", []),
-                "snow_chart": latest.get("snow_chart", {})
-            }
-        
-        return {"error": "No analytics data available"}
-        
-    except Exception as e:
-        logger.error("Analytics endpoint error", error=str(e))
-        return {"error": "Failed to get analytics data"}
+            # Get latest analysis
+            if service.analytics.historical_data:
+                latest = service.analytics.historical_data[-1]
+                
+                # Return driver-focused data only
+                return {
+                    "timestamp": latest["timestamp"],
+                    "road_condition": latest["road_condition"],
+                    "temperature": latest["temperature"],
+                    "conditions": latest["conditions"],
+                    "accumulation_rate": latest.get("accumulation_rate"),
+                    "forecast_alerts": latest.get("forecast_alerts", []),
+                    "snow_chart": latest.get("snow_chart", {})
+                }
+            
+            return {"error": "No analytics data available"}
+            
+        except Exception as e:
+            logger.error("Analytics endpoint error", error=str(e))
+            return {"error": "Failed to get analytics data"}
 
     @app.get("/analytics/history")
     @limiter.limit(f"{settings.rate_limit_per_minute}/minute")
