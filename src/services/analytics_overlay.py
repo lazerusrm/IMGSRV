@@ -292,13 +292,69 @@ class AnalyticsOverlay:
         return self.create_analytics_overlay(image, analytics_data)
     
     def create_minimal_overlay(self, image: np.ndarray, analytics_data: Dict) -> np.ndarray:
-        """Create minimal overlay for iframe embedding."""
+        """Create driver-focused minimal overlay with color-coded status."""
         try:
             # Convert to PIL
             pil_image = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
             draw = ImageDraw.Draw(pil_image)
             
-            # Simple timestamp overlay in bottom-right corner
+            # Get image dimensions
+            width, height = pil_image.size
+            
+            # Get road condition and temperature
+            condition = analytics_data.get("road_condition", "Unknown")
+            temperature = analytics_data.get("temperature", "N/A")
+            
+            # Color coding for urgency
+            color_map = {
+                "None": (0, 255, 0),      # Green - safe
+                "Light": (0, 255, 255),   # Yellow - caution
+                "Moderate": (0, 165, 255), # Orange - warning
+                "Heavy": (0, 0, 255),     # Red - danger
+                "Ice Possible": (255, 0, 255)  # Purple - ice warning
+            }
+            
+            color = color_map.get(condition, (255, 255, 255))
+            
+            # Load fonts
+            try:
+                font_large = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 28)
+                font_medium = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 20)
+                font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 16)
+            except:
+                font_large = ImageFont.load_default()
+                font_medium = ImageFont.load_default()
+                font_small = ImageFont.load_default()
+            
+            # Draw road condition (large, color-coded)
+            condition_text = f"Road: {condition}"
+            text_bbox = draw.textbbox((0, 0), condition_text, font=font_large)
+            text_width = text_bbox[2] - text_bbox[0]
+            text_height = text_bbox[3] - text_bbox[1]
+            
+            # Background for condition
+            bg_x = 20
+            bg_y = 20
+            draw.rectangle([bg_x - 10, bg_y - 5, bg_x + text_width + 10, bg_y + text_height + 5], 
+                          fill=(0, 0, 0, 180))
+            
+            # Draw condition text
+            draw.text((bg_x, bg_y), condition_text, font=font_large, fill=color)
+            
+            # Draw temperature
+            temp_y = bg_y + text_height + 15
+            temp_text = f"Temp: {temperature}"
+            draw.text((bg_x, temp_y), temp_text, font=font_medium, fill=(255, 255, 255, 255))
+            
+            # Draw forecast alerts (up to 3)
+            y_pos = temp_y + 35
+            alerts = analytics_data.get("forecast_alerts", [])[:3]
+            for alert in alerts:
+                alert_text = f"⚠ {alert}"
+                draw.text((bg_x, y_pos), alert_text, font=font_small, fill=(255, 255, 0, 255))
+                y_pos += 25
+            
+            # Draw timestamp in bottom-right
             timestamp_str = analytics_data.get("timestamp", "")
             if timestamp_str:
                 dt = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
@@ -306,28 +362,18 @@ class AnalyticsOverlay:
             else:
                 time_text = "N/A"
             
-            # Get image dimensions
-            width, height = pil_image.size
-            
-            # Draw simple timestamp
-            try:
-                font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 20)
-            except:
-                font = ImageFont.load_default()
-            
-            # Background for text
-            text_bbox = draw.textbbox((0, 0), time_text, font=font)
+            text_bbox = draw.textbbox((0, 0), time_text, font=font_small)
             text_width = text_bbox[2] - text_bbox[0]
             text_height = text_bbox[3] - text_bbox[1]
             
-            # Draw background rectangle
+            # Background for timestamp
             bg_x = width - text_width - 20
             bg_y = height - text_height - 20
             draw.rectangle([bg_x - 5, bg_y - 5, bg_x + text_width + 5, bg_y + text_height + 5], 
                           fill=(0, 0, 0, 150))
             
-            # Draw text
-            draw.text((bg_x, bg_y), time_text, font=font, fill=(255, 255, 255, 255))
+            # Draw timestamp
+            draw.text((bg_x, bg_y), time_text, font=font_small, fill=(255, 255, 255, 255))
             
             # Convert back to numpy
             result_image = cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)

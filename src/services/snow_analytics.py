@@ -194,6 +194,118 @@ class WeatherDataClient:
             "timestamp": datetime.now().isoformat(),
             "source": "fallback"
         }
+    
+    async def get_forecast_alerts(self, lat: float, lon: float) -> List[str]:
+        """Get snow/ice forecast alerts for next 24 hours with specific times."""
+        alerts = []
+        
+        try:
+            url = f"https://api.weather.gov/points/{lat},{lon}"
+            async with aiohttp.ClientSession() as session:
+                # Get forecast endpoint
+                async with session.get(url) as response:
+                    if response.status != 200:
+                        return alerts
+                    data = await response.json()
+                    forecast_url = data["properties"]["forecast"]
+                
+                # Get hourly forecast
+                async with session.get(forecast_url) as response:
+                    if response.status != 200:
+                        return alerts
+                    forecast_data = await response.json()
+                    periods = forecast_data["properties"]["periods"][:24]  # Next 24 hours
+                    
+                    for period in periods:
+                        forecast = period.get("shortForecast", "").lower()
+                        temp = period.get("temperature", 50)
+                        start_time = period.get("startTime", "")
+                        
+                        # Parse time to get specific hour
+                        try:
+                            from datetime import datetime
+                            start_dt = datetime.fromisoformat(start_time.replace('Z', '+00:00'))
+                            time_str = start_dt.strftime("%I:%M %p")
+                        except:
+                            time_str = "Unknown time"
+                        
+                        # Check for snow predictions
+                        if "snow" in forecast:
+                            if "heavy" in forecast or "significant" in forecast:
+                                alerts.append(f"Heavy snow expected at {time_str}")
+                            elif "light" in forecast:
+                                alerts.append(f"Light snow expected at {time_str}")
+                            else:
+                                alerts.append(f"Moderate snow expected at {time_str}")
+                        
+                        # Check for ice conditions
+                        elif temp <= 32 and ("rain" in forecast or "precip" in forecast):
+                            alerts.append(f"Ice possible at {time_str}")
+                
+                # If no snow alerts, add "No snow expected" message
+                if not any("snow" in alert.lower() for alert in alerts):
+                    alerts.append("No snow expected in next 24 hours")
+        
+        except Exception as e:
+            logger.warning("Failed to get forecast alerts", error=str(e))
+            alerts.append("Forecast unavailable")
+        
+        return alerts
+    
+    async def get_snow_probability_chart(self, lat: float, lon: float) -> Dict:
+        """Get snow probability data for chart visualization."""
+        chart_data = {
+            "hours": [],
+            "snow_probability": [],
+            "temperature": [],
+            "conditions": []
+        }
+        
+        try:
+            url = f"https://api.weather.gov/points/{lat},{lon}"
+            async with aiohttp.ClientSession() as session:
+                # Get forecast endpoint
+                async with session.get(url) as response:
+                    if response.status != 200:
+                        return chart_data
+                    data = await response.json()
+                    forecast_url = data["properties"]["forecast"]
+                
+                # Get hourly forecast
+                async with session.get(forecast_url) as response:
+                    if response.status != 200:
+                        return chart_data
+                    forecast_data = await response.json()
+                    periods = forecast_data["properties"]["periods"][:12]  # Next 12 hours
+                    
+                    for i, period in enumerate(periods):
+                        forecast = period.get("shortForecast", "").lower()
+                        temp = period.get("temperature", 50)
+                        
+                        # Calculate snow probability based on forecast text
+                        snow_prob = 0
+                        if "heavy" in forecast and "snow" in forecast:
+                            snow_prob = 90
+                        elif "moderate" in forecast and "snow" in forecast:
+                            snow_prob = 70
+                        elif "light" in forecast and "snow" in forecast:
+                            snow_prob = 50
+                        elif "snow" in forecast:
+                            snow_prob = 60
+                        elif "snow showers" in forecast:
+                            snow_prob = 40
+                        elif "snow" in forecast and "possible" in forecast:
+                            snow_prob = 30
+                        
+                        chart_data["hours"].append(f"{i+1}h")
+                        chart_data["snow_probability"].append(snow_prob)
+                        chart_data["temperature"].append(temp)
+                        chart_data["conditions"].append(period.get("shortForecast", "Clear"))
+        
+        except Exception as e:
+            logger.warning("Failed to get snow probability chart", error=str(e))
+        
+        return chart_data
 
 
 class RoadDetector:
@@ -420,8 +532,7 @@ class RoadSurfaceAnalyzer:
                 "wet_pixels": int(wet_pixels),
                 "ice_pixels": int(ice_pixels),
                 "surface_condition": self._classify_surface_condition(
-                    snow_coverage, wet_coverage, ice_coverage, road_brightness,
-                    temperature, hour, texture_variance
+                    snow_coverage, ice_coverage, temperature, road_brightness, texture_variance
                 ),
                 "confidence": min(max(snow_coverage, wet_coverage, ice_coverage) * 2, 1.0)
             }
@@ -443,40 +554,22 @@ class RoadSurfaceAnalyzer:
                 "error": str(e)
             }
     
-    def _classify_surface_condition(self, snow: float, wet: float, ice: float, brightness: float, temperature: float = 70, hour: int = 12, texture_variance: float = 0) -> str:
-        """Classify road surface condition based on coverage analysis with environmental factors."""
+    def _classify_surface_condition(self, snow: float, ice: float, temperature: float, brightness: float, texture_variance: float = 0) -> str:
+        """Classify road condition for driver alerts."""
         
-        # Aggressive environmental adjustments for clear, dry conditions
-        # If it's sunny (bright) and moderate temperature, heavily favor dry
-        if brightness > 100 and temperature > 45 and temperature < 80:
-            wet = wet * 0.1  # Dramatically reduce wet detection in clear conditions
+        # Ice warning conditions
+        if temperature <= 32 and (ice > 0.15 or brightness > 140):
+            return "Ice Possible"
         
-        # Temperature-based adjustments
-        if temperature > 80:  # Hot weather - very unlikely to be wet
-            wet = wet * 0.05  # Almost eliminate wet detection
-        elif temperature > 60:  # Warm weather - unlikely to be wet
-            wet = wet * 0.2   # Heavily reduce wet detection
-        elif temperature < 32:  # Freezing - wet is likely ice
-            if wet > 0.2:
-                return "icy"
-        
-        # Time-based shadow adjustment (morning/evening)
-        if hour < 8 or hour > 18:
-            wet = wet * 0.5  # Reduce wet detection during shadow hours
-        
-        # Texture-based adjustment - dry asphalt has high texture variance
-        if texture_variance > 300:  # Lowered threshold - dry roads have texture
-            wet = wet * 0.3  # Heavily reduce wet detection for textured surfaces
-        
-        # Simplified classification - only Dry, ICY, SNOWY
-        if snow > 0.3:  # Lowered threshold for snow detection
-            return "snowy"
-        elif ice > 0.2:  # Lowered threshold for ice detection
-            return "icy"
-        elif wet > 0.8:  # Much higher threshold for wet - only very obvious wetness
-            return "dry"  # Even if wet, classify as dry for your use case
+        # Snow conditions based on coverage
+        if snow > 0.5:
+            return "Heavy"  # Significant snow coverage
+        elif snow > 0.25:
+            return "Moderate"  # Noticeable snow
+        elif snow > 0.1:
+            return "Light"  # Light snow/dusting
         else:
-            return "dry"  # Default to dry for all other conditions
+            return "None"  # Clear/dry road
 
 
 class SnowAnalytics:
@@ -532,6 +625,18 @@ class SnowAnalytics:
                 lon=self.settings.weather_longitude
             )
             
+            # Get forecast alerts for next 24 hours
+            forecast_alerts = await self.weather_client.get_forecast_alerts(
+                lat=self.settings.weather_latitude,
+                lon=self.settings.weather_longitude
+            )
+            
+            # Get snow probability chart data
+            chart_data = await self.weather_client.get_snow_probability_chart(
+                lat=self.settings.weather_latitude,
+                lon=self.settings.weather_longitude
+            )
+            
             # Analyze road surface with environmental context
             road_analysis = self.road_analyzer.analyze_road_surface(
                 image_rgb, road_mask, 
@@ -545,22 +650,23 @@ class SnowAnalytics:
             # Generate predictions
             predictions = self._generate_predictions(weather_data)
             
-            # Compile results
+            # Simplified driver-focused analysis
             analysis_result = {
                 "timestamp": timestamp.isoformat(),
-                "image_source": "raw_bytes",
-                "road_analysis": road_analysis,  # Camera-based road surface analysis
-                "weather_data": weather_data,     # Real weather data (temp, snow depth, etc.)
-                "snow_analysis": {                # Combined data for backward compatibility
+                "road_condition": road_analysis["surface_condition"],  # None/Light/Moderate/Heavy/Ice Possible
+                "temperature": f"{weather_data.get('temperature', 0):.1f}°F",
+                "conditions": weather_data.get("conditions", "Clear"),
+                "accumulation_rate": f"{weather_data.get('snow_accumulation_1hr', 0):.1f}\"/hr" if weather_data.get('snow_accumulation_1hr', 0) > 0 else "N/A",
+                "forecast_alerts": forecast_alerts,  # List of upcoming snow/ice warnings
+                "snow_chart": chart_data,  # Chart data for visualization
+                
+                # Keep minimal technical data for debugging (not displayed to drivers)
+                "_debug": {
                     "snow_coverage": road_analysis["snow_coverage"],
-                    "snow_depth": weather_data.get("snow_depth_inches", 0.0),
-                    "temperature": weather_data.get("temperature", 45),
-                    "surface_condition": road_analysis["surface_condition"],
-                    "confidence": road_analysis["confidence"]
-                },
-                "accumulation_rate": accumulation_rate,
-                "predictions": predictions,
-                "road_status": road_analysis["surface_condition"].title()
+                    "ice_coverage": road_analysis["ice_coverage"],
+                    "road_brightness": road_analysis["road_brightness"],
+                    "texture_variance": road_analysis["texture_variance"]
+                }
             }
             
             # Store in historical data
