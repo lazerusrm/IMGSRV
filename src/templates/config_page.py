@@ -484,41 +484,40 @@ def create_config_page_html(config_data: Dict[str, Any]) -> str:
                                     </div>
                                 </div>
                             </div>
+                            
+                            <!-- ROI Controls -->
+                            <div style="margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #dee2e6;">
+                                <h4 style="margin: 0 0 10px 0; color: #495057;">ROI Editor Controls</h4>
+                                <div class="help-text" style="margin-bottom: 15px;">
+                                    Click on the image above to define monitoring regions. Minimum 4 points, maximum 12 points. Click near the first point to close the polygon.
+                                </div>
+                                
+                                <div class="form-group" style="margin-bottom: 15px;">
+                                    <div class="checkbox-group">
+                                        <input type="checkbox" id="road_roi_enabled" name="road_roi_enabled">
+                                        <label for="road_roi_enabled">Enable Custom Road Monitoring Region</label>
+                                    </div>
+                                    <div class="help-text">Use the defined polygon for road analysis (unchecked = use default detection)</div>
+                                </div>
+                                
+                                <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;">
+                                    <button type="button" onclick="clearROIPoints()" class="btn btn-secondary">Clear Points</button>
+                                    <button type="button" onclick="undoLastPoint()" class="btn btn-secondary">Undo Last</button>
+                                    <button type="button" onclick="loadCurrentROI()" class="btn btn-secondary">Load Saved ROI</button>
+                                    <button type="button" onclick="testROIVisualization()" class="btn btn-primary">Test ROI</button>
+                                </div>
+                                
+                                <div id="roi-status" style="padding: 10px; background: white; border-radius: 4px; font-size: 14px;">
+                                    <strong>Points:</strong> <span id="roi-point-count">0</span> / 12
+                                    <span id="roi-valid" style="margin-left: 20px;"></span>
+                                </div>
+                                
+                                <input type="hidden" id="road_roi_points" name="road_roi_points" value="">
+                            </div>
                         </div>
                     </div>
                  </div>
                  
-                 <!-- Road Monitoring Region (ROI) -->
-                 <div class="form-section">
-                     <h3>Road Monitoring Region (ROI)</h3>
-                     
-                     <div class="help-text" style="margin-bottom: 15px;">
-                         Click on the image below to define the area you want to monitor (parking lot + road). 
-                         Minimum 4 points, maximum 12 points. Click near the first point to close the polygon.
-                     </div>
-                     
-                     <div class="form-group" style="margin-bottom: 15px;">
-                         <div class="checkbox-group">
-                             <input type="checkbox" id="road_roi_enabled" name="road_roi_enabled">
-                             <label for="road_roi_enabled">Enable Custom Road Monitoring Region</label>
-                         </div>
-                         <div class="help-text">Use the defined polygon for road analysis (unchecked = use default detection)</div>
-                     </div>
-                     
-                     <div style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
-                         <button type="button" onclick="clearROIPoints()" class="btn btn-secondary">Clear Points</button>
-                         <button type="button" onclick="undoLastPoint()" class="btn btn-secondary">Undo Last</button>
-                         <button type="button" onclick="loadCurrentROI()" class="btn btn-secondary">Load Saved ROI</button>
-                         <button type="button" onclick="testROIVisualization()" class="btn btn-primary">Test ROI</button>
-                     </div>
-                     
-                     <div id="roi-status" style="margin-top: 10px; padding: 10px; background: #f0f0f0; border-radius: 4px; font-size: 14px;">
-                         <strong>Points:</strong> <span id="roi-point-count">0</span> / 12
-                         <span id="roi-valid" style="margin-left: 20px;"></span>
-                     </div>
-                     
-                     <input type="hidden" id="road_roi_points" name="road_roi_points" value="">
-                 </div>
                  
                  <!-- Warning Thresholds -->
                 <div class="form-section">

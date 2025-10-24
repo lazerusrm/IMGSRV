@@ -426,11 +426,13 @@ def create_app(settings: Settings) -> FastAPI:
         """
         try:
             if not sequence_service.analytics:
+                logger.error("Analytics not enabled for road boundaries endpoint")
                 raise HTTPException(status_code=503, detail="Analytics not enabled")
             
             # Capture current frame from camera
             try:
                 image_data, timestamp = await sequence_service.camera.capture_snapshot()
+                logger.info("Captured image for road boundary visualization", size_bytes=len(image_data), timestamp=timestamp.isoformat())
             except Exception as e:
                 logger.error("Failed to capture image for road boundary visualization", error=str(e))
                 raise HTTPException(status_code=503, detail="Camera not available")
