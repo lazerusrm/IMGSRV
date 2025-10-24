@@ -5,6 +5,63 @@ All notable changes to the Image Sequence Server project will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2025-10-24
+
+### 🎉 Major Release - Professional Overlay System & Enhanced Analytics
+
+This major release represents a complete overhaul of the analytics overlay system with significant improvements to user experience, readability, and professional appearance.
+
+### Added - Enhanced Analytics System
+- **Simplified Driver Alerts**: Streamlined road condition categories to Clear, Light, Moderate, Heavy, Ice Possible
+- **Raw Image Processing**: Analytics now performed on uncompressed camera data for maximum accuracy
+- **24-Hour Forecast Integration**: Added specific snow/ice alerts with exact times (e.g., "Heavy snow expected at 6:00 PM")
+- **Snow Probability Chart**: Added data structure for visualizing snow probability over time
+- **Accumulation Rate Display**: Shows snow accumulation rate or "N/A" when no snow expected
+
+### Changed - Professional Overlay System (BREAKING CHANGES)
+- **Continuous Black Bar Design**: Replaced individual text boxes with professional black bar across bottom 1/8th of image
+- **Horizontal Layout**: Complete redesign from vertical stacking to horizontal flow: Road Condition → Alerts → Timestamp → Temperature
+- **Temperature Positioning**: Moved temperature to far right for better visual balance
+- **Uniform Font Sizes**: All analytics text now uses consistent 36px font size for better readability
+- **Enhanced Readability**: White/yellow text on continuous black background for maximum visibility
+- **Strategic Positioning**: Top-left location name, bottom analytics bar (no more scattered elements)
+
+### Fixed - Critical Issues
+- **Analytics Processing**: Fixed 'snow_analysis' key error in sequence service
+- **Data Structure**: Updated analytics overlay to handle new simplified data structure
+- **Overlay Compatibility**: Added detection for new vs old data structures with deprecation warnings
+- **Text Cutoff Issues**: Implemented dynamic positioning and spacing for larger text elements
+- **Confusing Terminology**: Changed "Road: None" to "Road Condition: Clear" for better clarity
+
+### Deprecated - Legacy Systems
+- **Timestamp Overlay**: Removed redundant timestamp overlay from top-left corner
+- **Old Overlay Methods**: Marked legacy overlay methods as deprecated with warnings
+- **Complex Analytics**: Removed snow coverage, snow depth, confidence from primary display
+- **Individual Text Boxes**: Replaced with continuous black bar design
+
+### Improved - Code Quality & Infrastructure
+- **Error Handling**: Enhanced error handling in analytics processing
+- **Logging**: Improved logging for analytics data flow
+- **Mobile Overlay**: Updated mobile overlay to use minimal overlay for consistency
+- **Font Size Optimization**: Significantly larger fonts (48px, 36px, 28px) for all overlay text
+- **Background Boxes**: Semi-transparent black backgrounds behind all text elements
+- **Maximum Visibility**: Enhanced contrast and readability against any background color
+- **Consistent Rendering**: Helper function for uniform text-with-background rendering
+- **Improved Spacing**: Better positioning and spacing for larger text elements
+
+### Documentation - Infrastructure & Security
+- **VPS Provider**: Updated documentation to specify RackNerd (https://www.racknerd.com) as VPS hosting provider
+- **Repository Privacy**: Repository made private for enhanced security
+- **Comprehensive Documentation**: Updated all documentation to reflect new overlay system
+- **Code Cleanup**: Removed unnecessary test files and debugging artifacts
+
+### Technical Improvements
+- **Dynamic Positioning**: Smart algorithm for text positioning with bounds checking
+- **Horizontal Centering**: Automatic centering of analytics elements
+- **Spacing Optimization**: 30px spacing between elements for clean separation
+- **Color Coding**: Maintained road condition color coding (Green, Yellow, Orange, Red, Purple)
+- **Background Rendering**: Continuous black bar with proper alpha blending
+
 ## [1.3.1] - 2025-10-24
 
 ### Changed - Professional Overlay Design

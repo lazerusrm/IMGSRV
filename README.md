@@ -1,6 +1,6 @@
 # Image Sequence Server
 
-**Version: 1.3.1** | **Release Date: 2025-10-24**
+**Version: 2.0.0** | **Release Date: 2025-10-24**
 
 **⚠️ PROPRIETARY SOFTWARE - ALL RIGHTS RESERVED**
 
@@ -25,6 +25,8 @@ For licensing inquiries, contact: lazerusrm
 ## Overview
 
 A secure, efficient service for capturing IP camera snapshots and generating traffic camera-style image sequences for web display. Designed for deployment in Proxmox LXC containers with comprehensive security hardening.
+
+**🎉 Version 2.0.0 - Major Release:** Complete overhaul of the analytics overlay system with professional continuous black bar design, enhanced readability, and streamlined driver-focused analytics.
 
 ## Features
 

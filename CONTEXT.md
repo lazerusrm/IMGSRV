@@ -1,6 +1,6 @@
 # IMGSRV - Project Context & Architecture
 
-**Version:** 1.3.1  
+**Version:** 2.0.0  
 **Last Updated:** 2025-10-24    
 **Project Type:** Python + Bash deployment scripts  
 **Primary Use:** Snow load monitoring webcam system for Woodland Hills City Center
