@@ -532,9 +532,21 @@ EnvironmentFile=/etc/imgserv/.env
 WantedBy=multi-user.target
 EOF
     
-    # Create basic environment file
+    # Create basic environment file (preserve existing VPS settings)
     mkdir -p /etc/imgserv
-    cat > /etc/imgserv/.env << 'EOF'
+    
+    # Check if .env file already exists
+    if [ -f /etc/imgserv/.env ]; then
+        log "Preserving existing environment file with VPS settings"
+        # Backup existing VPS settings
+        EXISTING_VPS_ENABLED=$(grep "^VPS_ENABLED=" /etc/imgserv/.env 2>/dev/null || echo "")
+        EXISTING_VPS_HOST=$(grep "^VPS_HOST=" /etc/imgserv/.env 2>/dev/null || echo "")
+        EXISTING_VPS_USER=$(grep "^VPS_USER=" /etc/imgserv/.env 2>/dev/null || echo "")
+        EXISTING_VPS_PORT=$(grep "^VPS_PORT=" /etc/imgserv/.env 2>/dev/null || echo "")
+        EXISTING_VPS_PATH=$(grep "^VPS_PATH=" /etc/imgserv/.env 2>/dev/null || echo "")
+        
+        # Create new .env file with basic settings
+        cat > /etc/imgserv/.env << 'EOF'
 HOST=0.0.0.0
 PORT=8080
 LOG_LEVEL=INFO
@@ -545,6 +557,33 @@ DATA_DIR=/var/lib/imgserv
 IMAGES_DIR=/var/lib/imgserv/images
 SEQUENCES_DIR=/var/lib/imgserv/sequences
 EOF
+        
+        # Restore VPS settings if they existed
+        if [ -n "$EXISTING_VPS_ENABLED" ]; then
+            echo "" >> /etc/imgserv/.env
+            echo "# VPS Configuration (Preserved)" >> /etc/imgserv/.env
+            echo "$EXISTING_VPS_ENABLED" >> /etc/imgserv/.env
+            [ -n "$EXISTING_VPS_HOST" ] && echo "$EXISTING_VPS_HOST" >> /etc/imgserv/.env
+            [ -n "$EXISTING_VPS_USER" ] && echo "$EXISTING_VPS_USER" >> /etc/imgserv/.env
+            [ -n "$EXISTING_VPS_PORT" ] && echo "$EXISTING_VPS_PORT" >> /etc/imgserv/.env
+            [ -n "$EXISTING_VPS_PATH" ] && echo "$EXISTING_VPS_PATH" >> /etc/imgserv/.env
+            log "VPS settings preserved in environment file"
+        fi
+    else
+        # Create new .env file
+        cat > /etc/imgserv/.env << 'EOF'
+HOST=0.0.0.0
+PORT=8080
+LOG_LEVEL=INFO
+CAMERA_IP=192.168.1.110
+CAMERA_USERNAME=admin
+CAMERA_PASSWORD=123456
+DATA_DIR=/var/lib/imgserv
+IMAGES_DIR=/var/lib/imgserv/images
+SEQUENCES_DIR=/var/lib/imgserv/sequences
+EOF
+        log "Created new environment file"
+    fi
     
     # Set ownership and fix permissions
     chown -R imgserv:imgserv /opt/imgserv
