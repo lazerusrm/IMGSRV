@@ -576,8 +576,21 @@ EOF
     
     # Test VPS connectivity if configured
     VPS_CONNECTION_WORKING=false
-    if [ -f /etc/imgserv/.env ] && grep -q "^VPS_ENABLED=true" /etc/imgserv/.env 2>/dev/null; then
+    VPS_CONFIGURED=false
+    
+    # Check for VPS configuration in multiple ways
+    if [ -f /etc/imgserv/.env ]; then
         source /etc/imgserv/.env
+        
+        # Check if VPS is explicitly enabled OR if VPS settings exist
+        if grep -q "^VPS_ENABLED=true" /etc/imgserv/.env 2>/dev/null || \
+           ([ -n "$VPS_HOST" ] && [ "$VPS_HOST" != "your-vps-server.com" ] && [ "$VPS_HOST" != "" ]); then
+            VPS_CONFIGURED=true
+            log "VPS configuration detected: $VPS_HOST"
+        fi
+    fi
+    
+    if [ "$VPS_CONFIGURED" = true ]; then
         if [ -n "$VPS_HOST" ] && [ "$VPS_HOST" != "your-vps-server.com" ]; then
             log "Testing VPS connection..."
             if ssh -i /opt/imgserv/.ssh/vps_key -p ${VPS_PORT:-22} -o StrictHostKeyChecking=no -o ConnectTimeout=10 ${VPS_USER}@${VPS_HOST} "echo 'Connection test OK'" &>/dev/null; then
@@ -976,6 +989,58 @@ show_completion_info() {
     fi
 }
 
+# Function to help configure VPS settings
+configure_vps_settings() {
+    log "VPS configuration helper"
+    echo ""
+    echo "To enable VPS sync, you need to configure these settings in /etc/imgserv/.env:"
+    echo ""
+    echo "VPS_ENABLED=true"
+    echo "VPS_HOST=your-vps-server.com"
+    echo "VPS_USER=root"
+    echo "VPS_PORT=22"
+    echo "VPS_PATH=/var/www/html/monitoring"
+    echo ""
+    echo -n "Would you like to configure VPS settings now? [y/N]: "
+    read -r CONFIGURE_VPS
+    
+    if [[ "$CONFIGURE_VPS" =~ ^[Yy]$ ]]; then
+        echo -n "Enter VPS hostname/IP: "
+        read -r VPS_HOST_INPUT
+        
+        echo -n "Enter VPS username [root]: "
+        read -r VPS_USER_INPUT
+        VPS_USER_INPUT=${VPS_USER_INPUT:-root}
+        
+        echo -n "Enter VPS SSH port [22]: "
+        read -r VPS_PORT_INPUT
+        VPS_PORT_INPUT=${VPS_PORT_INPUT:-22}
+        
+        echo -n "Enter VPS web path [/var/www/html/monitoring]: "
+        read -r VPS_PATH_INPUT
+        VPS_PATH_INPUT=${VPS_PATH_INPUT:-/var/www/html/monitoring}
+        
+        # Update .env file
+        if [ -f /etc/imgserv/.env ]; then
+            # Remove existing VPS settings
+            sed -i '/^VPS_/d' /etc/imgserv/.env
+            
+            # Add new VPS settings
+            echo "" >> /etc/imgserv/.env
+            echo "# VPS Configuration" >> /etc/imgserv/.env
+            echo "VPS_ENABLED=true" >> /etc/imgserv/.env
+            echo "VPS_HOST=$VPS_HOST_INPUT" >> /etc/imgserv/.env
+            echo "VPS_USER=$VPS_USER_INPUT" >> /etc/imgserv/.env
+            echo "VPS_PORT=$VPS_PORT_INPUT" >> /etc/imgserv/.env
+            echo "VPS_PATH=$VPS_PATH_INPUT" >> /etc/imgserv/.env
+            
+            log "VPS settings configured. Run the installer again to test VPS connection."
+        else
+            warn "Environment file not found: /etc/imgserv/.env"
+        fi
+    fi
+}
+
 # Main installation function
 main() {
     echo ""
@@ -1007,11 +1072,30 @@ main() {
     restart_service
     
     # VPS setup if configured
-    if [[ "$SETUP_VPS" == "true" ]]; then
-        log "VPS configuration requested, proceeding with VPS setup..."
-        setup_vps_with_automation || warn "VPS setup had issues, continuing with camera server setup"
+    if [[ "$SETUP_VPS" == "true" ]] || [[ "$VPS_CONFIGURED" == "true" ]]; then
+        if [[ "$SETUP_VPS" == "true" ]]; then
+            log "VPS configuration requested, proceeding with VPS setup..."
+            setup_vps_with_automation || warn "VPS setup had issues, continuing with camera server setup"
+        else
+            log "VPS configuration detected, checking status..."
+            if [[ "$VPS_CONNECTION_WORKING" == "true" ]]; then
+                log "✅ VPS is configured and working - no additional setup needed"
+            else
+                log "⚠️ VPS is configured but connection failed - manual intervention may be needed"
+                log "Run: curl -sSL https://raw.githubusercontent.com/lazerusrm/IMGSRV/main/deploy/vps-debug.sh | bash"
+            fi
+        fi
     else
-        log "No VPS configuration requested, camera server setup only"
+        log "No VPS configuration detected, camera server setup only"
+        echo ""
+        echo -n "Would you like to configure VPS settings now? [y/N]: "
+        read -r CONFIGURE_VPS_NOW
+        
+        if [[ "$CONFIGURE_VPS_NOW" =~ ^[Yy]$ ]]; then
+            configure_vps_settings
+        else
+            log "To enable VPS sync later, configure VPS_HOST in /etc/imgserv/.env and run installer again"
+        fi
     fi
     
     verify_installation
