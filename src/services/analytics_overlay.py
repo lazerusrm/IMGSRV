@@ -333,7 +333,7 @@ class AnalyticsOverlay:
             
             # Color coding for urgency
             color_map = {
-                "None": (0, 255, 0),      # Green - safe
+                "Clear": (0, 255, 0),      # Green - safe
                 "Light": (0, 255, 255),   # Yellow - caution
                 "Moderate": (0, 165, 255), # Orange - warning
                 "Heavy": (0, 0, 255),     # Red - danger
@@ -375,38 +375,62 @@ class AnalyticsOverlay:
                 return text_height + padding * 2
             
             # Draw location name in top-left corner with background box
-            margin = 20
+            margin = 30  # Increased margin for larger fonts
             location_text = "Woodland Hills City Center"
             location_height = draw_text_with_background(
                 location_text, margin, margin, font_medium, (255, 255, 255, 255)
             )
             
-            # Position analytics data in bottom-right corner
-            start_y = height - 300  # Start 300px from bottom (increased space)
-            start_x = width - 400    # Start 400px from right (increased space)
+            # Position analytics data in bottom-right corner with dynamic spacing
+            # Calculate required space for all elements
+            max_text_width = 0
+            total_height = 0
+            
+            # Estimate space needed for all elements
+            condition_text = f"Road: {condition}"
+            temp_text = f"Temp: {temperature}"
+            alerts = analytics_data.get("forecast_alerts", [])[:3]
+            
+            # Calculate maximum width needed
+            for text in [condition_text, temp_text] + [f"⚠ {alert}" for alert in alerts]:
+                bbox = draw.textbbox((0, 0), text, font=font_large)  # Use largest font for width calculation
+                text_width = bbox[2] - bbox[0]
+                max_text_width = max(max_text_width, text_width)
+            
+            # Calculate total height needed
+            total_height += 60  # Road condition (48px font + padding)
+            total_height += 50  # Temperature (36px font + padding)
+            total_height += len(alerts) * 40  # Alerts (28px font + padding)
+            total_height += 20  # Extra spacing
+            
+            # Position with adequate margins
+            start_x = width - max_text_width - margin - 20  # Extra margin for background box
+            start_y = height - total_height - margin
+            
+            # Ensure we don't go off-screen
+            start_x = max(margin, start_x)
+            start_y = max(margin + location_height + 20, start_y)  # Don't overlap with location
             
             # Draw road condition with background box
-            condition_text = f"Road: {condition}"
             condition_height = draw_text_with_background(
                 condition_text, start_x, start_y, font_large, color
             )
             
             # Draw temperature with background box
-            temp_y = start_y + condition_height + 10
+            temp_y = start_y + condition_height + 15  # Increased spacing
             temp_text = f"Temp: {temperature}"
             temp_height = draw_text_with_background(
                 temp_text, start_x, temp_y, font_medium, (255, 255, 255, 255)
             )
             
             # Draw forecast alerts with background boxes
-            y_pos = temp_y + temp_height + 10
-            alerts = analytics_data.get("forecast_alerts", [])[:3]
+            y_pos = temp_y + temp_height + 15  # Increased spacing
             for alert in alerts:
                 alert_text = f"⚠ {alert}"
                 alert_height = draw_text_with_background(
                     alert_text, start_x, y_pos, font_small, (255, 255, 0, 255)
                 )
-                y_pos += alert_height + 5
+                y_pos += alert_height + 10  # Increased spacing between alerts
             
             # Draw timestamp in bottom-right corner with background box
             timestamp_str = analytics_data.get("timestamp", "")
@@ -420,9 +444,9 @@ class AnalyticsOverlay:
             text_bbox = draw.textbbox((0, 0), time_text, font=font_small)
             text_width = text_bbox[2] - text_bbox[0]
             
-            # Position timestamp in bottom-right corner
+            # Position timestamp in bottom-right corner with adequate margin
             timestamp_x = width - text_width - margin - 16  # Account for padding
-            timestamp_y = height - 50  # Increased from 30
+            timestamp_y = height - 60  # Increased from 50 for larger font
             
             # Draw timestamp with background box
             draw_text_with_background(

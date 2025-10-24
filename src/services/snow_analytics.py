@@ -569,7 +569,7 @@ class RoadSurfaceAnalyzer:
         elif snow > 0.1:
             return "Light"  # Light snow/dusting
         else:
-            return "None"  # Clear/dry road
+            return "Clear"  # Clear/dry road
 
 
 class SnowAnalytics:
