@@ -19,7 +19,8 @@
 9. [Deployment Process](#deployment-process)
 10. [Common Tasks](#common-tasks)
 11. [Troubleshooting](#troubleshooting)
-12. [Future Development](#future-development)
+12. [Cost Structure](#cost-structure)
+13. [Future Development](#future-development)
 
 ---
 
@@ -792,6 +793,42 @@ ssh -i /opt/imgserv/.ssh/vps_key root@198.23.249.133 "ufw status"
 
 ---
 
+## Cost Structure
+
+### Monthly Operating Costs
+
+**Total Monthly Cost: $4.75**  
+**Total Annual Cost: $57.00**
+
+| Component | Monthly Cost | Annual Cost | Provider |
+|-----------|-------------|-------------|----------|
+| **VPS Hosting** | $3.50 | $42.00 | RackNerd (https://www.racknerd.com) |
+| **Domain & DNS** | $1.25 | $15.00 | GoDaddy (industrialcamera.com) |
+| **SSL Certificates** | $0.00 | $0.00 | Let's Encrypt (Free) |
+| **TOTAL** | **$4.75** | **$57.00** | |
+
+### Cost Optimization Features
+
+- **Efficient GIF Compression:** 60-80% size reduction (400-800KB per sequence)
+- **Smart Storage Management:** Automatic cleanup and monitoring
+- **Minimal Resource Usage:** Optimized for LXC containers
+- **Bandwidth Optimization:** ~9GB/month usage (well within 1TB VPS limit)
+- **Static Content Serving:** No database or dynamic processing on VPS
+
+### Municipal Budget Justification
+
+- **Cost Per Citizen:** <$0.01 per month (estimated 1,000 residents)
+- **Public Safety Value:** 24/7 road condition monitoring
+- **Operational Efficiency:** Reduces manual monitoring needs
+- **Low Financial Risk:** <$60/year total cost
+- **High Reliability:** VPS uptime guarantees
+
+### Detailed Analysis
+
+> **📊 Comprehensive Cost Analysis:** See [COSTING.md](COSTING.md) for detailed budget breakdown, ROI analysis, cost optimization details, bandwidth usage analysis, and future cost projections.
+
+---
+
 ## Future Development
 
 ### Potential Enhancements
@@ -941,6 +978,12 @@ journalctl -u imgserv -f
 # Test everything
 curl http://localhost:8080/status | jq
 ```
+
+### Cost Summary
+- **Monthly Operating Cost:** $4.75
+- **Annual Operating Cost:** $57.00
+- **Cost Per Citizen:** <$0.01/month
+- **Detailed Analysis:** [COSTING.md](COSTING.md)
 
 ---
 
