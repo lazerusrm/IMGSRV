@@ -53,6 +53,7 @@ This major release represents a complete overhaul of the analytics overlay syste
 - **VPS Provider**: Updated documentation to specify RackNerd (https://www.racknerd.com) as VPS hosting provider
 - **Repository Privacy**: Repository made private for enhanced security
 - **Comprehensive Documentation**: Updated all documentation to reflect new overlay system
+- **Cost Analysis**: Added detailed COSTING.md with budget breakdown, ROI analysis, and cost optimization
 - **Code Cleanup**: Removed unnecessary test files and debugging artifacts
 
 ### Technical Improvements

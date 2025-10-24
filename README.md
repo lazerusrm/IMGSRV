@@ -423,8 +423,13 @@ https://www.ssllabs.com/ssltest/analyze.html?d=woodlandhillswebcam.industrialcam
 
 ### Cost Comparison:
 - **RackNerd VPS**: ~$3.50/month
-- **Shared Hosting**: ~$3-5/month
-- **Difference**: VPS provides full control and SSH access needed for RSYNC
+- **Domain & DNS**: ~$1.25/month  
+- **SSL Certificates**: Free (Let's Encrypt)
+- **Total Monthly Cost**: **$4.75/month** ($57/year)
+- **Shared Hosting**: ~$3-5/month (limited functionality)
+- **Difference**: VPS provides full control, SSH access, and custom features
+
+> **📊 Detailed Cost Analysis:** See [COSTING.md](COSTING.md) for comprehensive budget breakdown, ROI analysis, and cost optimization details.
 
 ## Architecture
 

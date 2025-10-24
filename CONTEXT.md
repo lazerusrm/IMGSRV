@@ -78,7 +78,7 @@ The system uses TWO separate servers for security and network isolation:
 1. **Security:** Camera server behind firewall/NAT, no open ports
 2. **Isolation:** Configuration and analytics stay private
 3. **Simplicity:** VPS only serves static content
-4. **Cost:** Minimal VPS resources needed (512MB RAM)
+4. **Cost:** Minimal VPS resources needed (512MB RAM) - See [COSTING.md](COSTING.md) for detailed budget analysis
 
 ---
 
