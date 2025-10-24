@@ -5,6 +5,7 @@ Provides secure web interface for image sequence viewing and management.
 """
 
 import logging
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
@@ -375,10 +376,11 @@ def create_app(settings: Settings) -> FastAPI:
     async def get_analytics(request: Request):
         """Get current snow analytics data."""
         try:
-            if not sequence_service.analytics:
+            service = app.state.sequence_service
+            if not service.analytics:
                 return {"error": "Analytics not enabled"}
             
-            analytics_summary = sequence_service.analytics.get_analytics_summary()
+            analytics_summary = service.analytics.get_analytics_summary()
             return analytics_summary
             
         except Exception as e:
@@ -390,11 +392,12 @@ def create_app(settings: Settings) -> FastAPI:
     async def get_analytics_history(request: Request, hours: int = 24):
         """Get historical analytics data."""
         try:
-            if not sequence_service.analytics:
+            service = app.state.sequence_service
+            if not service.analytics:
                 return {"error": "Analytics not enabled"}
             
             # Get historical data from analytics service
-            historical_data = sequence_service.analytics.historical_data
+            historical_data = service.analytics.historical_data
             
             # Filter by time range
             cutoff_time = datetime.now() - timedelta(hours=hours)
@@ -425,13 +428,14 @@ def create_app(settings: Settings) -> FastAPI:
             mode: "annotated" for visualization with overlay, "raw" for original image
         """
         try:
-            if not sequence_service.analytics:
+            service = app.state.sequence_service
+            if not service.analytics:
                 logger.error("Analytics not enabled for road boundaries endpoint")
                 raise HTTPException(status_code=503, detail="Analytics not enabled")
             
             # Capture current frame from camera
             try:
-                image_data, timestamp = await sequence_service.camera.capture_snapshot()
+                image_data, timestamp = await service.camera.capture_snapshot()
                 logger.info("Captured image for road boundary visualization", size_bytes=len(image_data), timestamp=timestamp.isoformat())
             except Exception as e:
                 logger.error("Failed to capture image for road boundary visualization", error=str(e))
@@ -458,15 +462,14 @@ def create_app(settings: Settings) -> FastAPI:
                 )
             else:
                 # Visualize road boundaries
-                annotated_image, metadata = sequence_service.analytics.road_detector.visualize_road_boundaries(cv_image)
+                annotated_image, metadata = service.analytics.road_detector.visualize_road_boundaries(cv_image)
                 
                 # Convert back to bytes for response
                 _, buffer = cv2.imencode('.png', annotated_image)
                 image_bytes = buffer.tobytes()
                 
                 # Return image with metadata in headers
-                from fastapi.responses import Response
-                response = Response(
+                http_response = Response(
                     content=image_bytes,
                     media_type="image/png",
                     headers={
@@ -478,7 +481,7 @@ def create_app(settings: Settings) -> FastAPI:
                 )
                 
                 logger.info("Road boundary visualization generated", metadata=metadata)
-                return response
+                return http_response
             
         except HTTPException:
             raise
