@@ -44,7 +44,7 @@ A secure, efficient service for capturing IP camera snapshots and generating tra
   - Automatic loading on page load
 - **Security Hardened**: Rate limiting, input validation, HTTPS, and isolation
 - **Let's Encrypt SSL**: Automated SSL certificate generation and renewal
-- **Resource Optimized**: Minimal memory and CPU usage for LXC containers
+- **VPS Hosting:** RackNerd (https://www.racknerd.com) for public content delivery
 - **Production Ready**: Systemd service, nginx reverse proxy, auto-configuration
 - **Auto-refresh**: Web interface with configurable update intervals
 - **Storage Management**: Automatic cleanup and storage monitoring

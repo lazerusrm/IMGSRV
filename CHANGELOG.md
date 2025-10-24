@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Uniform Font Size**: All analytics text now uses consistent 36px font size
 - **Enhanced Readability**: White/yellow text on continuous black background for maximum visibility
 
+### Documentation - Infrastructure Details
+- **VPS Provider**: Updated documentation to specify RackNerd (https://www.racknerd.com) as VPS hosting provider
+- **Repository Privacy**: Repository made private for enhanced security
+
 ### Improved - Code Quality & Readability
 - **Error Handling**: Enhanced error handling in analytics processing
 - **Logging**: Improved logging for analytics data flow

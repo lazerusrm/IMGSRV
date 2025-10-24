@@ -94,7 +94,7 @@ The system uses TWO separate servers for security and network isolation:
 - **Service User:** imgserv (non-root, runs the service)
 
 ### VPS Server (Public Content)
-- **Provider:** RackNerd
+- **Provider:** RackNerd (https://www.racknerd.com)
 - **IP:** 198.23.249.133
 - **OS:** Ubuntu 24.04 LTS
 - **Domain:** woodlandhillswebcam.industrialcamera.com
