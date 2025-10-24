@@ -4,6 +4,8 @@
 
 **⚠️ PROPRIETARY SOFTWARE - ALL RIGHTS RESERVED**
 
+> **📘 For Developers & AI Assistants:** See [CONTEXT.md](CONTEXT.md) for complete architecture, development environment, and system design documentation.
+
 This software is proprietary and confidential. Unauthorized use, copying, modification, distribution, or reverse engineering is strictly prohibited.
 
 ## License
