@@ -1,206 +1,148 @@
-# IMGSRV - Project Context & Architecture
+# IMGSRV - Agent Context & Instructions
 
-**Version:** 2.0.0  
-**Last Updated:** 2025-10-24    
-**Project Type:** Python + Bash deployment scripts  
-**Primary Use:** Snow load monitoring webcam system for Woodland Hills City Center
+## 🎯 Purpose
 
----
-
-## Table of Contents
-1. [Project Overview](#project-overview)
-2. [Two-Server Architecture](#two-server-architecture)
-3. [Development Environment](#development-environment)
-4. [System Architecture](#system-architecture)
-5. [Technology Stack](#technology-stack)
-6. [Directory Structure](#directory-structure)
-7. [Key Components](#key-components)
-8. [Configuration](#configuration)
-9. [Deployment Process](#deployment-process)
-10. [Common Tasks](#common-tasks)
-11. [Troubleshooting](#troubleshooting)
-12. [Cost Structure](#cost-structure)
-13. [Future Development](#future-development)
+This file provides context for future development sessions to maintain consistency and avoid documentation sprawl. It serves as the single source of truth for how developers and AI tools should interact with the IMGSRV codebase.
 
 ---
 
-## Project Overview
+## 📚 Documentation Structure (STRICT - Do Not Deviate)
 
-IMGSRV is a production-grade IP camera snapshot system that:
-- Captures frames from an RTSP camera stream using ffmpeg
-- Generates traffic camera-style animated GIF sequences
-- Performs snow load analytics using computer vision
-- Integrates real-time weather data from NOAA API
-- Serves content via a public HTTPS website
-- Runs in a secure two-server architecture
+### **Core Documentation Files (Only These 6)**
 
-**End Goal:** Provide a reliable, automated snow load monitoring system with public web access, optimized GIF delivery, configurable update intervals, and comprehensive analytics.
+1. **README.md** - Main entry point
+   - Quick start (5 minutes)
+   - Features overview
+   - Setup instructions
+   - Troubleshooting
+
+2. **CHANGELOG.md** - Version history
+   - Follows Keep a Changelog format
+   - Never consolidate or remove
+   - Update with each release
+
+3. **CONTEXT.md** - This file (Agent instructions)
+   - Architecture overview
+   - Coding conventions
+   - Common patterns
+   - Development guidelines
+
+4. **COSTING.md** - Budget & financial analysis
+   - Monthly/annual operating costs
+   - Cost optimization features
+   - Municipal budget justification
+   - ROI analysis
+
+5. **SECURITY.md** - Security architecture
+   - Two-server security model
+   - Configuration system security
+   - Access control guidelines
+
+6. **DEPLOYMENT.md** - Operations guide
+   - Production deployment
+   - Environment configuration
+   - Maintenance procedures
+   - Monitoring & scaling
+
+### ⚠️ **IMPORTANT RULES**
+
+**DO NOT:**
+- ❌ Create new documentation files
+- ❌ Create status/summary/complete documents
+- ❌ Create multiple guides for same topic
+- ❌ Duplicate information across files
+
+**DO:**
+- ✅ Update existing documentation files
+- ✅ Add sections to appropriate doc
+- ✅ Keep docs in sync with code
+- ✅ Follow the 6-file structure
 
 ---
 
-## Two-Server Architecture
+## 🏗️ Project Architecture
 
-### Critical Design Decision
-The system uses TWO separate servers for security and network isolation:
+### Tech Stack
+
+**Backend (Camera Server):**
+- Python 3.11+ + FastAPI + uvicorn
+- OpenCV (cv2) + NumPy (computer vision)
+- Pillow (PIL) + ffmpeg (image processing)
+- aiohttp (HTTP client)
+- structlog (structured logging)
+- pydantic-settings (configuration)
+
+**Frontend (VPS Server):**
+- nginx (web server)
+- Static HTML + GIF files
+- Auto-refresh (HTML meta refresh)
+- Let's Encrypt SSL
+
+**Infrastructure:**
+- Two-server architecture (security isolation)
+- systemd service management
+- RSYNC over SSH (one-way sync)
+- LXC container deployment
+
+**APIs:**
+- NOAA Weather API (api.weather.gov) - FREE
+- ONVIF Camera Protocol (RTSP)
+
+### Current Version
+
+**Version**: 2.0.0  
+**Release Date**: October 24, 2025  
+**Status**: Production Ready - Professional Overlay System Complete
+
+---
+
+## 💰 Cost Management Strategy
+
+### Operating Costs (Monthly)
+
+**Total Monthly Cost: $4.75**  
+**Total Annual Cost: $57.00**
+
+| Component | Monthly Cost | Provider | Purpose |
+|-----------|-------------|----------|---------|
+| **VPS Hosting** | $3.50 | RackNerd | Public content serving |
+| **Domain & DNS** | $1.25 | GoDaddy | Domain management |
+| **SSL Certificates** | $0.00 | Let's Encrypt | HTTPS encryption |
+
+### Cost Optimization Features
+
+✅ **DO:**
+- Use efficient GIF compression (60-80% size reduction)
+- Implement smart storage management (automatic cleanup)
+- Optimize for minimal resource usage (LXC containers)
+- Serve static content only on VPS (no processing)
+- Monitor bandwidth usage (~9GB/month vs 1TB limit)
+
+❌ **DON'T:**
+- Process analytics on VPS (keep on camera server)
+- Store configuration on VPS (security risk)
+- Use expensive APIs when free alternatives exist
+- Over-provision VPS resources
+
+### Cost Per Citizen Analysis
+- **Population**: ~1,000 residents (estimated)
+- **Cost Per Citizen**: <$0.01/month
+- **Annual Cost Per Citizen**: <$0.06/year
+- **Public Safety Value**: 24/7 road condition monitoring
+
+---
+
+## 📁 Project Structure
 
 ```
-┌─────────────────────────────────────┐
-│  CAMERA SERVER (Internal/Private)  │
-│  ─────────────────────────────────  │
-│  • LXC Container on Proxmox        │
-│  • IP: 192.168.1.110 (Camera)      │
-│  • Captures images via RTSP        │
-│  • Generates GIF sequences         │
-│  • Runs analytics                  │
-│  • Stores configuration            │
-│  • NO public internet access       │
-│                                     │
-│  SSH Keys: /opt/imgserv/.ssh/      │
-│  Config: /etc/imgserv/.env         │
-└──────────┬──────────────────────────┘
-           │ RSYNC over SSH
-           │ (One-way sync)
-           ▼
-┌─────────────────────────────────────┐
-│    VPS SERVER (Public-Facing)      │
-│  ─────────────────────────────────  │
-│  • RackNerd VPS                    │
-│  • IP: 198.23.249.133              │
-│  • Domain: woodlandhillswebcam     │
-│           .industrialcamera.com    │
-│  • Serves GIFs via nginx           │
-│  • HTTPS with Let's Encrypt       │
-│  • NO processing or analytics      │
-│  • NO configuration access         │
-└─────────────────────────────────────┘
-```
-
-**Why This Architecture?**
-1. **Security:** Camera server behind firewall/NAT, no open ports
-2. **Isolation:** Configuration and analytics stay private
-3. **Simplicity:** VPS only serves static content
-4. **Cost:** Minimal VPS resources needed (512MB RAM) - See [COSTING.md](COSTING.md) for detailed budget analysis
-
----
-
-## Development Environment
-
-### Camera Server (Primary Development)
-- **Host:** Proxmox VE
-- **Container:** LXC (Debian/Ubuntu based)
-- **OS:** Debian 11+ or Ubuntu 20.04+
-- **Python:** 3.11+
-- **Shell:** Bash
-- **User:** root (for system service management)
-- **Service User:** imgserv (non-root, runs the service)
-
-### VPS Server (Public Content)
-- **Provider:** RackNerd (https://www.racknerd.com)
-- **IP:** 198.23.249.133
-- **OS:** Ubuntu 24.04 LTS
-- **Domain:** woodlandhillswebcam.industrialcamera.com
-- **DNS:** GoDaddy (A record for industrialcamera.com)
-- **Web Server:** nginx
-- **SSL:** Let's Encrypt (certbot)
-- **User:** root (for SSH access from camera server)
-
-### Camera Details
-- **Model:** PG2056IRC-ZS (Chinese ONVIF camera)
-- **IP:** 192.168.1.110
-- **Protocol:** RTSP (rtsp://admin:123456@192.168.1.110:554/stream0)
-- **Resolution:** 1920x1080
-- **Username:** admin
-- **Password:** 123456
-
-### Key Contact
-- **Email:** brad@industrialcamera.com (for Let's Encrypt, support)
-- **GitHub:** lazerusrm
-
----
-
-## System Architecture
-
-### Core Services Flow
-
-```
-Camera (RTSP) → ffmpeg → Python Service → GIF Generation
-                              ↓
-                      Analytics Engine
-                      (Computer Vision)
-                              ↓
-                      Weather API (NOAA)
-                              ↓
-                      Overlay Generation
-                              ↓
-                    Save to /var/lib/imgserv
-                              ↓
-                      RSYNC to VPS
-                              ↓
-                    VPS nginx serves HTTPS
-```
-
-### Data Flow
-1. **Capture:** ffmpeg pulls frames from RTSP every 12-60 seconds (configurable)
-2. **Store:** Images saved to `/var/lib/imgserv/images/`
-3. **Analyze:** Computer vision detects road boundaries and surface conditions
-4. **Weather:** NOAA API provides temperature, snow depth, precipitation
-5. **Generate:** Create GIF sequence with overlays every 2-30 minutes (configurable)
-6. **Sync:** RSYNC pushes GIF to VPS over SSH
-7. **Serve:** VPS nginx serves via HTTPS with auto-refresh HTML
-
----
-
-## Technology Stack
-
-### Backend (Camera Server)
-- **Language:** Python 3.11+
-- **Framework:** FastAPI + uvicorn
-- **Image Processing:** Pillow (PIL), ffmpeg
-- **Computer Vision:** OpenCV (cv2), NumPy
-- **HTTP Client:** aiohttp
-- **Config:** pydantic-settings
-- **Logging:** structlog
-- **Monitoring:** prometheus-client
-- **Rate Limiting:** slowapi
-
-### Frontend (VPS)
-- **Web Server:** nginx
-- **SSL:** certbot (Let's Encrypt)
-- **Content:** Static HTML + GIF files
-- **Auto-refresh:** HTML meta refresh (300 seconds)
-- **Mobile:** Responsive CSS design
-
-### System Integration
-- **Service:** systemd (imgserv.service)
-- **Sync:** rsync over SSH with key authentication
-- **Firewall:** ufw (VPS), iptables (camera server)
-- **Deployment:** Bash scripts
-
-### APIs
-- **Weather:** NOAA API (api.weather.gov)
-  - Forecast endpoint for predictions
-  - Observation stations for current conditions
-  - No API key required
-
----
-
-## Directory Structure
-
-```
-/opt/imgserv/                    # Main installation directory
-├── main.py                      # Entry point
-├── requirements.txt             # Python dependencies
-├── VERSION                      # Version number (1.2.0)
-├── CHANGELOG.md                 # Release history
-├── README.md                    # User documentation
-├── CONTEXT.md                   # This file (AI reference)
+IMGSRV/
 ├── src/
-│   ├── app.py                  # FastAPI application
+│   ├── app.py                  # FastAPI application (main entry)
 │   ├── config.py               # Settings & environment variables
 │   ├── services/
 │   │   ├── camera.py           # RTSP capture via ffmpeg
-│   │   ├── image_processor.py # GIF generation & optimization
-│   │   ├── sequence_service.py# Orchestration & timing
+│   │   ├── image_processor.py  # GIF generation & optimization
+│   │   ├── sequence_service.py # Orchestration & timing
 │   │   ├── storage.py          # File management
 │   │   ├── vps_sync.py         # RSYNC to VPS
 │   │   ├── snow_analytics.py   # Computer vision analytics
@@ -209,7 +151,8 @@ Camera (RTSP) → ffmpeg → Python Service → GIF Generation
 │   ├── templates/
 │   │   └── config_page.py      # Configuration UI HTML
 │   └── utils/
-│       └── logging.py          # Structured logging setup
+│       ├── logging.py          # Structured logging setup
+│       └── security.py         # Security utilities
 ├── deploy/
 │   ├── autoinstall.sh          # One-command installer
 │   ├── install.sh              # Manual installer
@@ -223,705 +166,399 @@ Camera (RTSP) → ffmpeg → Python Service → GIF Generation
 │   ├── fix-vps-dpkg.sh         # Fix dpkg issues
 │   ├── fix-env.sh              # Fix .env syntax
 │   └── vps-setup-ssl.sh        # SSL setup script (runs on VPS)
-└── tests/
-    └── test_imgserv.py         # Test suite
-
-/etc/imgserv/                    # Configuration directory
-├── .env                         # Environment variables
-└── analytics_config.json        # Dynamic analytics config
-
-/var/lib/imgserv/                # Data directory
-├── images/                      # Captured frames
-├── sequences/                   # Generated GIFs
-└── analytics/                   # Analytics history
-
-/var/log/imgserv/                # Logs
-└── app.log                      # Application logs
-
-/opt/imgserv/.ssh/               # SSH keys for VPS sync
-├── vps_key                      # Private key
-└── vps_key.pub                  # Public key
-
-/etc/systemd/system/
-└── imgserv.service              # Systemd service
-
-VPS: /var/www/html/monitoring/   # Public web root
-├── index.html                   # Main page (auto-generated)
-├── iframe.html                  # Iframe endpoint
-└── sequence_*.gif               # Synced GIF files
+├── tests/
+│   └── test_imgserv.py         # Test suite
+├── main.py                     # Entry point
+├── requirements.txt            # Python dependencies
+├── VERSION                     # Single source of truth (v2.0.0)
+├── CHANGELOG.md               # Version history
+├── README.md                  # Main documentation
+├── CONTEXT.md                 # This file (Agent instructions)
+├── COSTING.md                 # Budget & financial analysis
+├── SECURITY.md                # Security architecture
+├── DEPLOYMENT.md              # Operations guide
+└── docker-compose.yml         # Container deployment option
 ```
 
 ---
 
-## Key Components
+## 🔑 Key Locations
 
-### 1. Camera Service (`src/services/camera.py`)
-- Uses `ffmpeg` subprocess to capture frames from RTSP
-- Handles connection errors with exponential backoff
-- Returns JPEG image data and timestamp
-- No HTTP snapshots (switched from aiohttp to ffmpeg in V1.0)
+**Core Services**: `src/services/`
+- `camera.py` - RTSP capture using ffmpeg subprocess
+- `image_processor.py` - GIF generation with optimization (60-80% size reduction)
+- `sequence_service.py` - Main orchestration service
+- `storage.py` - File management with automatic cleanup
+- `vps_sync.py` - RSYNC over SSH with key authentication
+- `snow_analytics.py` - Computer vision road detection & surface analysis
+- `analytics_overlay.py` - Professional overlay system (v2.0.0)
+- `config_manager.py` - Dynamic configuration management
 
-### 2. Image Processor (`src/services/image_processor.py`)
-- Creates animated GIFs from image sequences
-- **Removed Timestamp Overlays:** No longer adds redundant timestamps (handled by analytics overlay)
-- Applies analytics overlays (minimal driver-focused design)
-- **Deprecated Legacy Methods:** `add_timestamp_overlay()` marked as deprecated
-- **GIF Optimization:**
-  - Resizes to 1280x720 (from 1920x1080)
-  - Color quantization (128-256 colors)
-  - LANCZOS resampling for quality
-  - 60-80% file size reduction
-  - Typical output: 400-800 KB per GIF
+**Configuration**: `/etc/imgserv/`
+- `.env` - Environment variables (camera, VPS, analytics settings)
+- `analytics_config.json` - Dynamic configuration (web UI managed)
 
-### 3. Sequence Service (`src/services/sequence_service.py`)
-- Orchestrates the entire capture → process → sync workflow
-- **Dynamic Timing:**
-  - Capture interval = (update_interval_minutes × 60) / max_images
-  - Example: 2-min updates, 10 images = 12-second captures
-  - Example: 5-min updates, 10 images = 30-second captures
-- Handles service reload without full restart
-- Manages error recovery with exponential backoff
+**Data Storage**: `/var/lib/imgserv/`
+- `images/` - Captured frames (auto-cleanup)
+- `sequences/` - Generated GIFs (rotating)
+- `analytics/` - Analytics history
 
-### 4. VPS Synchronizer (`src/services/vps_sync.py`)
-- RSYNC over SSH with key authentication
-- One-way sync (camera → VPS)
-- Automatically fixes VPS permissions after sync
-- Updates `index.html` with latest GIF reference
-- Verifies sync success via file count
+**SSH Keys**: `/opt/imgserv/.ssh/`
+- `vps_key` - Private key for VPS sync
+- `vps_key.pub` - Public key
 
-### 5. Snow Analytics (`src/services/snow_analytics.py`)
-- **RoadDetector:** Detects road boundaries using edge detection
-- **RoadSurfaceAnalyzer:** Analyzes snow/wet/ice coverage via computer vision
-- **WeatherDataClient:** Fetches real-time data from NOAA API
-- **SnowAnalytics:** Combines vision + weather for accurate reporting
-- **Simplified Driver Alerts:** Clear, Light, Moderate, Heavy, Ice Possible
-- **Raw Image Processing:** Analytics performed on uncompressed camera data for maximum accuracy
-- **24-Hour Forecast Integration:** Provides specific snow/ice alerts with times
+**Service**: `/etc/systemd/system/imgserv.service`
 
-### 6. Analytics Overlay (`src/services/analytics_overlay.py`)
-- **Continuous Black Bar Design:** Professional black bar across bottom 1/8th of image
-- **Strategic Positioning:** 
-  - Top-left: Location name only ("Woodland Hills City Center") with individual background box
-  - Bottom: Continuous black bar with all analytics data overlaid horizontally
-- **Font Sizes:** Uniform 36px font size for all analytics text elements
-- **Horizontal Layout:** Road Condition → Alerts → Timestamp → Temperature (far right)
-- **Color-Coded Status:** Green (Clear), Yellow (Light), Orange (Moderate), Red (Heavy), Purple (Ice Possible)
-- **Enhanced Readability:** White/yellow text on continuous black background for maximum visibility
-- **Deprecated Legacy Methods:** Old overlay system marked as deprecated with warnings
-
-### 7. Configuration Manager (`src/services/config_manager.py`)
-- Manages `/etc/imgserv/analytics_config.json`
-- Validates all configuration changes
-- Provides `get_capture_interval()` for dynamic timing
-- Supports real-time updates without service restart
+**VPS Web Root**: `/var/www/html/monitoring/`
+- `index.html` - Main page (auto-generated)
+- `sequence_*.gif` - Synced GIF files
 
 ---
 
-## Configuration
+## 💡 Coding Conventions
 
-### Environment Variables (`/etc/imgserv/.env`)
+### Language & Terminology
 
-```bash
-# Camera Settings
-CAMERA_IP=192.168.1.110
-CAMERA_USERNAME=admin
-CAMERA_PASSWORD=123456
-CAMERA_PORT=554
-CAMERA_RTSP_PATH=/stream0
-CAMERA_RESOLUTION=1920x1080
+**Use Professional Terms:**
+- ✅ "Road condition monitoring"
+- ✅ "Computer vision analytics"
+- ✅ "Real-time weather integration"
+- ✅ "Professional overlay system"
+- ✅ "Traffic camera-style interface"
+- ❌ "AI-powered" (avoid buzzwords)
+- ❌ "Smart camera" (too generic)
 
-# Image Processing (Base Defaults)
-IMAGE_WIDTH=1920
-IMAGE_HEIGHT=1080
-IMAGE_QUALITY=85
-SEQUENCE_DURATION_MINUTES=5      # Time span of image sequence
-SEQUENCE_UPDATE_INTERVAL_MINUTES=5  # How often to generate new GIF
-MAX_IMAGES_PER_SEQUENCE=10       # Frames per GIF
+**Feature Naming:**
+- "Snow load monitoring" not "AI snow detection"
+- "Road surface analysis" not "AI road analysis"
+- "Weather integration" not "AI weather"
+- "Professional overlays" not "AI overlays"
 
-# Storage
-DATA_DIR=/var/lib/imgserv
-MAX_STORAGE_MB=1024
+### Code Style
 
-# Server
-HOST=0.0.0.0
-PORT=8080
-WORKERS=1
-RATE_LIMIT_PER_MINUTE=60
+**Backend (Python):**
+- Follow PEP 8
+- Type hints for function parameters
+- Docstrings for all classes and methods
+- Use f-strings for formatting
+- Descriptive variable names
+- Async/await for I/O operations
 
-# Security
-SECRET_KEY=<generate-with-openssl-rand-hex-32>
+**Configuration:**
+- Use pydantic-settings for validation
+- Environment variables for secrets
+- JSON for dynamic configuration
+- Validate all inputs
 
-# VPS Synchronization
-VPS_ENABLED=true
-VPS_HOST=198.23.249.133
-VPS_USER=root
-VPS_PORT=22
-VPS_REMOTE_PATH=/var/www/html/monitoring
-VPS_SSH_KEY_PATH=/opt/imgserv/.ssh/vps_key
-VPS_RSYNC_OPTIONS="-avz --delete"
+**Error Handling:**
+- Use structlog for structured logging
+- Graceful degradation
+- Exponential backoff for retries
+- Clear error messages
 
-# Analytics (Base Defaults - overridden by analytics_config.json)
-ANALYTICS_ENABLED=true
-ANALYTICS_UPDATE_INTERVAL_MINUTES=5
-WEATHER_API_ENABLED=true
-WEATHER_LATITUDE=40.011771        # Woodland Hills, Utah
-WEATHER_LONGITUDE=-111.648000
-ANALYTICS_OVERLAY_ENABLED=true
-ANALYTICS_OVERLAY_STYLE=minimal
-```
+### File Organization
 
-### Dynamic Configuration (`/etc/imgserv/analytics_config.json`)
-
-Managed via web UI at `http://camera-server:8080/config`
-
-```json
-{
-  "analytics_enabled": true,
-  "analytics_update_interval_minutes": 5,
-  "weather_api_enabled": true,
-  "weather_latitude": 40.011757,
-  "weather_longitude": -111.648119,
-  "weather_location_name": "Woodland Hills City, Utah",
-  "analytics_overlay_enabled": true,
-  "analytics_overlay_style": "minimal",
-  "snow_detection_threshold": 0.7,
-  "ice_warning_temperature": 32,
-  "hazardous_snow_depth": 2.0,
-  "sequence_update_interval_minutes": 5,
-  "max_images_per_sequence": 10,
-  "gif_frame_duration_seconds": 1.0,
-  "gif_optimization_level": "balanced",
-  "road_roi_points": [],
-  "road_roi_enabled": false,
-  "last_updated": "2025-10-24T..."
-}
-```
-
-**Interactive ROI Configuration:**
-- **Canvas-based polygon editor** for defining road monitoring regions
-- **Click-to-add points** (4-12 points) on live camera feed
-- **Normalized coordinates** (0-1 scale) for resolution independence
-- **Visual feedback** with blue overlay and red first point marker
-- **Test functionality** to preview ROI on road detection visualization
-- **Enable/disable toggle** to switch between custom and default detection
-
-**Configuration Changes Apply Immediately** - Service auto-reloads capture loop.
+- One service per file
+- Group related utilities
+- Separate concerns (camera, processing, sync, analytics)
+- Clear naming conventions
 
 ---
 
-## Deployment Process
+## 🔧 Common Tasks
 
-### Interactive Installation (Recommended)
+### Adding a New Feature
 
-The installer now supports interactive configuration for streamlined setup:
+1. Update appropriate service in `src/services/`
+2. Add configuration options to `config.py` and `analytics_config.json`
+3. Update web UI in `src/templates/config_page.py` if needed
+4. Add tests in `tests/`
+5. Update `CHANGELOG.md`
+6. Update `VERSION` file
 
-```bash
-# Interactive installation with prompts
-curl -sSL https://raw.githubusercontent.com/lazerusrm/IMGSRV/main/autoinstall.sh | bash
+### Adding Configuration Options
 
-# You will be prompted for:
-# 1. VPS setup (y/N) - optional
-# 2. Domain name (e.g., webcam.example.com)
-# 3. SSL email (for Let's Encrypt)
-# 4. VPS IP address
-# 5. VPS username (default: root)
-# 6. VPS password (for SSH key setup)
-# 7. Camera IP (default: 192.168.1.110)
-# 8. Camera username (default: admin)
-# 9. Camera password (default: 123456)
+1. Add to `src/config.py` with validation
+2. Add to `src/services/config_manager.py` for dynamic updates
+3. Update web UI in `src/templates/config_page.py`
+4. Test configuration changes apply without restart
+5. Document in `README.md`
 
-# Features:
-# - Input validation (domain format, email format, IP validation)
-# - DNS propagation check with 30 retries (5 minutes)
-# - Automatic VPS deployment
-# - SSL certificate setup with 3 retries
-# - Graceful error handling
-# - Non-interactive mode support (env vars)
-```
+### Deploying an Update
 
-### Non-Interactive Installation
+1. Update `VERSION` file
+2. Update `CHANGELOG.md`
+3. Test on camera server: `systemctl restart imgserv`
+4. Test VPS sync: `sudo bash /opt/imgserv/deploy/update-vps-remote.sh`
+5. Monitor: `journalctl -u imgserv -f`
 
-For automated deployments or CI/CD, set environment variables:
+### Adding Analytics Features
 
-```bash
-# Camera-only setup (no VPS)
-CAMERA_IP=192.168.1.110 \
-CAMERA_USER=admin \
-CAMERA_PASS=123456 \
-curl -sSL https://raw.githubusercontent.com/lazerusrm/IMGSRV/main/autoinstall.sh | bash
-
-# Full setup with VPS
-DOMAIN_NAME=webcam.example.com \
-SSL_EMAIL=admin@example.com \
-VPS_IP=198.23.249.133 \
-VPS_USER=root \
-VPS_PASSWORD=secretpassword \
-CAMERA_IP=192.168.1.110 \
-CAMERA_USER=admin \
-CAMERA_PASS=123456 \
-curl -sSL https://raw.githubusercontent.com/lazerusrm/IMGSRV/main/autoinstall.sh | bash
-```
-
-### What the Installer Does
-
-**Camera Server:**
-1. Installs system dependencies (ffmpeg, python3, nginx, jq, rsync, sshpass, etc.)
-2. Creates imgserv user and directories
-3. Clones repository to /opt/imgserv
-4. Sets up Python venv and installs packages
-5. Creates systemd service
-6. Configures nginx reverse proxy
-7. **ENHANCED VPS CONFIGURATION DETECTION:**
-   - Automatically detects existing VPS configuration in /etc/imgserv/.env
-   - Preserves VPS settings during environment file updates
-   - Auto-detects Woodland Hills VPS (198.23.249.133) from existing config
-   - Excludes false positives (0.0.0.0, local IPs) from detection
-8. **INTELLIGENT SSH KEY MANAGEMENT:**
-   - Preserves existing SSH keys if they exist and work
-   - Validates SSH key integrity (regenerates corrupted keys)
-   - Automatically deploys SSH key to VPS when configuration detected
-   - Single password prompt for SSH key deployment
-   - Tests SSH and RSYNC connectivity after deployment
-9. Starts service
-
-**VPS Server (if configured):**
-1. Installs nginx, openssl, ufw
-2. Creates web directories at /var/www/html/monitoring
-3. Configures nginx with self-signed SSL
-4. Sets up imgserv user for RSYNC
-5. Configures firewall (ports 80, 443, 22)
-6. Checks DNS propagation
-7. Installs Let's Encrypt SSL certificate
-8. Creates monitoring scripts
-
-### Manual VPS Setup (Alternative)
-
-If you prefer manual VPS setup or the automated setup fails:
-
-```bash
-# Option 1: Automated from camera server
-sudo bash /opt/imgserv/deploy/setup-vps.sh <vps-ip> <vps-user> <vps-password>
-
-# Option 2: Manual on VPS
-curl -sSL https://raw.githubusercontent.com/lazerusrm/IMGSRV/main/deploy/vps-deploy.sh | bash
-```
-
-### SSH Key Setup (Camera → VPS)
-
-```bash
-# Keys generated automatically during install at:
-# /opt/imgserv/.ssh/vps_key (private)
-# /opt/imgserv/.ssh/vps_key.pub (public)
-
-# Public key must be added to VPS:
-# /root/.ssh/authorized_keys
-
-# Interactive installer handles this automatically
-# Manual: ssh-copy-id -i /opt/imgserv/.ssh/vps_key root@<vps-ip>
-```
-
-### SSL Certificate Setup (Let's Encrypt)
-
-```bash
-# Prerequisites:
-# 1. DNS A record: woodlandhillswebcam.industrialcamera.com → 198.23.249.133
-# 2. Wait 5-30 minutes for DNS propagation
-# 3. Ports 80 and 443 open on VPS
-
-# From camera server:
-sudo bash /opt/imgserv/deploy/setup-ssl-fresh.sh
-
-# What it does:
-# 1. Checks DNS resolution
-# 2. Installs certbot on VPS
-# 3. Obtains certificate from Let's Encrypt
-# 4. Configures nginx for HTTPS
-# 5. Sets up HTTP → HTTPS redirect
-# 6. Enables auto-renewal (systemd timer)
-
-# Certificate location on VPS:
-# /etc/letsencrypt/live/woodlandhillswebcam.industrialcamera.com/
-```
+1. Update `src/services/snow_analytics.py` for new detection
+2. Update `src/services/analytics_overlay.py` for display
+3. Test with real camera data
+4. Update configuration options
+5. Document in `README.md`
 
 ---
 
-## Common Tasks
+## 🚨 Critical Rules
 
-### Update Camera Server
+### Architecture
+
+1. **Two-Server Model**: Camera server = processing, VPS = serving only
+2. **Security Isolation**: Configuration stays on camera server
+3. **One-Way Sync**: Camera → VPS only (no reverse sync)
+4. **Static Content**: VPS serves only static files
+5. **No Processing on VPS**: All analytics on camera server
+
+### Documentation
+
+1. **Never create new .md files** without explicit approval
+2. Always update existing documentation
+3. Keep README.md as the entry point
+4. CHANGELOG.md follows Keep a Changelog format
+5. Use CONTEXT.md for development guidelines
+
+### Code Changes
+
+1. Never expose camera credentials publicly
+2. Always validate configuration changes
+3. Use structured logging for all operations
+4. Handle edge cases gracefully
+5. Test both camera server and VPS after changes
+
+### Deployment
+
+1. Always backup configuration before changes
+2. Test SSH/RSYNC connectivity before deployment
+3. Monitor logs after deployment
+4. Verify VPS content updates correctly
+5. Check SSL certificate status
+
+---
+
+## 📊 Key Metrics
+
+**Services**: 8 core services  
+**Configuration Files**: 2 (static + dynamic)  
+**Documentation Files**: 6 (keep it this way!)  
+**Deploy Scripts**: 12  
+**Monthly Operating Cost**: $4.75  
+**Annual Operating Cost**: $57.00  
+**Cost Per Citizen**: <$0.01/month  
+
+---
+
+## 🎯 Design Principles
+
+1. **Security First**: Two-server architecture with proper isolation
+2. **Cost Effective**: Minimal VPS resources, efficient processing
+3. **Reliability**: Robust error handling, automatic recovery
+4. **Simplicity**: Clear separation of concerns
+5. **Professional**: Traffic camera-style interface
+6. **Maintainable**: Structured logging, clear configuration
+7. **Municipal Focus**: Public safety, budget-conscious
+
+---
+
+## 🔐 Environment Configuration
+
+**Camera Server (`/etc/imgserv/.env`):**
+
+**Required:**
+- `CAMERA_IP` - Camera IP address
+- `CAMERA_USERNAME` - Camera username
+- `CAMERA_PASSWORD` - Camera password
+- `SECRET_KEY` - Application secret key
+
+**VPS Sync:**
+- `VPS_ENABLED=true`
+- `VPS_HOST` - VPS IP address
+- `VPS_USER=root`
+- `VPS_SSH_KEY_PATH=/opt/imgserv/.ssh/vps_key`
+
+**Analytics:**
+- `ANALYTICS_ENABLED=true`
+- `WEATHER_LATITUDE` - Location latitude
+- `WEATHER_LONGITUDE` - Location longitude
+
+**Optional:**
+- `IMAGE_QUALITY=85` - JPEG quality
+- `SEQUENCE_UPDATE_INTERVAL_MINUTES=5` - Update frequency
+- `MAX_STORAGE_MB=1024` - Storage limit
+
+**Dynamic Configuration (`/etc/imgserv/analytics_config.json`):**
+- Managed via web UI at `http://camera-server:8080/config`
+- Real-time updates without service restart
+- Validated before applying changes
+
+---
+
+## 🎓 Architectural Decisions
+
+### Why Two-Server Architecture?
+- **Security**: Camera server behind firewall, no public exposure
+- **Isolation**: Configuration and analytics stay private
+- **Simplicity**: VPS only serves static content
+- **Cost**: Minimal VPS resources needed
+
+### Why FastAPI?
+- **Performance**: Async/await for I/O operations
+- **Validation**: Built-in request/response validation
+- **Documentation**: Automatic API documentation
+- **Type Safety**: Python type hints support
+
+### Why OpenCV + NumPy?
+- **Computer Vision**: Road detection and surface analysis
+- **Performance**: Optimized C++ backend
+- **Ecosystem**: Mature library with good documentation
+- **Integration**: Works well with Python ecosystem
+
+### Why RSYNC over SSH?
+- **Security**: Encrypted transfer with key authentication
+- **Reliability**: Built-in retry and resume capabilities
+- **Efficiency**: Only transfers changed files
+- **Simplicity**: Standard Unix tool
+
+### Why Let's Encrypt?
+- **Free**: No SSL certificate costs
+- **Automated**: Auto-renewal with systemd timers
+- **Trusted**: Widely accepted by browsers
+- **Simple**: Easy setup and maintenance
+
+---
+
+## 🚨 Critical Design Decisions
+
+### Professional Overlay System (v2.0.0)
+
+**IMPORTANT**: The overlay system was completely redesigned in v2.0.0 for professional appearance and readability.
+
+**Key Changes:**
+1. **Continuous Black Bar**: Replaced individual text boxes with professional black bar across bottom 1/8th
+2. **Horizontal Layout**: Road Condition → Alerts → Timestamp → Temperature (far right)
+3. **Uniform Font Sizes**: All analytics text uses consistent 36px font
+4. **Enhanced Readability**: White/yellow text on continuous black background
+5. **Strategic Positioning**: Top-left location name, bottom analytics bar
+
+**Implementation:**
+- ✅ `src/services/analytics_overlay.py` - `create_minimal_overlay()` method
+- ✅ Deprecated legacy overlay methods with warnings
+- ✅ Color-coded road conditions (Green, Yellow, Orange, Red, Purple)
+- ✅ Dynamic positioning with bounds checking
+- ✅ 30px spacing between elements
+
+**Rationale:**
+This provides a professional, traffic camera-style appearance that's highly readable
+against any background while maintaining all essential information in a clean layout.
+
+### Raw Image Processing
+
+**IMPORTANT**: Analytics are performed on raw image data directly from the camera, before any compression.
+
+**Why Raw Processing:**
+1. **Maximum Accuracy**: No compression artifacts affecting analysis
+2. **Better Detection**: Higher quality data for computer vision
+3. **Consistent Results**: Same quality regardless of storage settings
+4. **Future-Proof**: Ready for higher resolution cameras
+
+**Implementation:**
+- ✅ `src/services/sequence_service.py` - `analyze_raw_image()` called before saving
+- ✅ `src/services/snow_analytics.py` - `analyze_raw_image()` method
+- ✅ Raw bytes processed directly from camera capture
+
+### Configuration Management
+
+**IMPORTANT**: Configuration is split between static (environment) and dynamic (web UI) settings.
+
+**Static Configuration** (`/etc/imgserv/.env`):
+- Camera credentials
+- VPS connection details
+- Basic service settings
+- Security keys
+
+**Dynamic Configuration** (`/etc/imgserv/analytics_config.json`):
+- Analytics settings
+- Update intervals
+- ROI boundaries
+- Overlay preferences
+- Real-time updates without restart
+
+**Rationale:**
+This allows for secure credential storage while providing flexible runtime configuration
+for operational adjustments without service restarts.
+
+---
+
+## 🚀 Quick Commands
 
 ```bash
+# Start service
+systemctl start imgserv
+
+# View logs
+journalctl -u imgserv -f
+
+# Check status
+systemctl status imgserv
+curl http://localhost:8080/status | jq
+
+# Update camera server
 cd /opt/imgserv
 git pull origin main
 sudo bash deploy/update-camera.sh
 
-# Or one-liner:
-curl -sSL https://raw.githubusercontent.com/lazerusrm/IMGSRV/main/deploy/update-camera.sh | sudo bash
-```
-
-### Update VPS (No Login Required)
-
-```bash
-# From camera server:
+# Update VPS (from camera server)
 sudo bash /opt/imgserv/deploy/update-vps-remote.sh
 
-# What it does:
-# - Fixes permissions on VPS
-# - Restarts nginx
-# - Updates index.html
-# - Forces RSYNC sync
-# - Tests endpoints
-```
-
-### Change Update Interval
-
-```bash
-# Via Web UI (preferred):
-# 1. Open http://camera-server:8080/config
-# 2. Change "GIF Update Interval" (1-30 minutes)
-# 3. Adjust "Images Per Sequence" (5-30)
-# 4. Click "Save Configuration"
-# Service auto-reloads with new timing
-
-# Example timings:
-# - 2 min updates, 10 images = 12-second captures
-# - 5 min updates, 10 images = 30-second captures
-# - 10 min updates, 15 images = 40-second captures
-```
-
-### View Logs
-
-```bash
-# Camera server service logs
-journalctl -u imgserv -f
-
-# Filter for specific events
-journalctl -u imgserv -n 100 | grep -i "rsync\|analytics\|error"
-
-# VPS nginx logs
-ssh -i /opt/imgserv/.ssh/vps_key root@198.23.249.133
-journalctl -u nginx -f
-```
-
-### Test Endpoints
-
-```bash
-# Camera server (internal)
+# Test endpoints
 curl http://localhost:8080/health
-curl http://localhost:8080/status | jq
 curl http://localhost:8080/analytics | jq
-curl -I http://localhost:8080/analytics/road-boundaries
 
-# VPS (public)
-curl -I https://woodlandhillswebcam.industrialcamera.com
-curl https://woodlandhillswebcam.industrialcamera.com/health
-```
-
-### Manual Service Management
-
-```bash
-# Camera server
-systemctl status imgserv
-systemctl restart imgserv
-systemctl stop imgserv
-systemctl start imgserv
-
-# VPS nginx
-ssh -i /opt/imgserv/.ssh/vps_key root@198.23.249.133
-systemctl status nginx
-systemctl reload nginx
-```
-
-### Force GIF Generation
-
-```bash
-# Trigger immediate sequence generation
-curl http://localhost:8080/status
-
-# Check if new GIF was created
-ls -lht /var/lib/imgserv/sequences/ | head -5
-
-# Manually sync to VPS
-sudo bash /opt/imgserv/deploy/update-vps-remote.sh
+# Check version
+cat VERSION
+curl http://localhost:8080/status | jq '.version'
 ```
 
 ---
 
-## Troubleshooting
+## 📝 Update History
 
-### Common Issues
-
-#### 1. Camera Connection Failed
-```bash
-# Test RTSP stream
-ffmpeg -i rtsp://admin:123456@192.168.1.110:554/stream0 -vframes 1 -f image2 test.jpg
-
-# Check camera settings
-grep CAMERA /etc/imgserv/.env
-
-# View camera errors
-journalctl -u imgserv -n 50 | grep -i camera
-```
-
-#### 2. GIF Not Updating
-```bash
-# Check service status
-systemctl status imgserv
-
-# View capture loop
-journalctl -u imgserv -f | grep -i "capture\|sequence"
-
-# Check update interval config
-cat /etc/imgserv/analytics_config.json | jq '.sequence_update_interval_minutes'
-
-# Check for errors
-journalctl -u imgserv -n 100 | grep -i error
-```
-
-#### 3. VPS Not Receiving Files
-```bash
-# Test SSH connection
-ssh -i /opt/imgserv/.ssh/vps_key root@198.23.249.133 "echo 'SSH OK'"
-
-# Check RSYNC logs
-journalctl -u imgserv -n 50 | grep -i rsync
-
-# Manually trigger sync
-sudo bash /opt/imgserv/deploy/update-vps-remote.sh
-
-# Check VPS files
-ssh -i /opt/imgserv/.ssh/vps_key root@198.23.249.133 "ls -lh /var/www/html/monitoring/"
-```
-
-#### 4. SSL Certificate Issues
-```bash
-# Check certificate status on VPS
-ssh -i /opt/imgserv/.ssh/vps_key root@198.23.249.133 "certbot certificates"
-
-# Test renewal
-ssh -i /opt/imgserv/.ssh/vps_key root@198.23.249.133 "certbot renew --dry-run"
-
-# Check nginx SSL config
-ssh -i /opt/imgserv/.ssh/vps_key root@198.23.249.133 "nginx -t"
-
-# View certificate logs
-ssh -i /opt/imgserv/.ssh/vps_key root@198.23.249.133 "cat /var/log/letsencrypt/letsencrypt.log"
-```
-
-#### 5. Configuration Not Applying
-```bash
-# Check if service reloaded
-journalctl -u imgserv -n 20 | grep -i reload
-
-# Manually restart
-systemctl restart imgserv
-
-# Verify config file
-cat /etc/imgserv/analytics_config.json | jq '.'
-
-# Check for validation errors
-journalctl -u imgserv -n 50 | grep -i "config\|validation"
-```
-
-#### 6. Analytics Showing No Data
-```bash
-# Check analytics status
-curl http://localhost:8080/analytics | jq '.status'
-
-# View analytics logs
-journalctl -u imgserv -n 100 | grep -i analytics
-
-# Test weather API
-curl "https://api.weather.gov/points/40.011771,-111.648000" | jq
-
-# Check road boundary visualization
-curl -I http://localhost:8080/analytics/road-boundaries
-```
-
-#### 7. High GIF File Sizes
-```bash
-# Check current optimization level
-cat /etc/imgserv/analytics_config.json | jq '.gif_optimization_level'
-
-# Change to aggressive (via config UI or manually)
-# Expected sizes:
-# - Low: 1-2 MB
-# - Balanced: 400-800 KB (recommended)
-# - Aggressive: 200-400 KB
-
-# Check actual file sizes
-ls -lh /var/lib/imgserv/sequences/*.gif
-```
-
-### Performance Issues
-
-```bash
-# Check resource usage
-htop
-df -h /var/lib/imgserv
-
-# Check service memory
-systemctl status imgserv | grep -i memory
-
-# Reduce capture frequency (via config UI)
-# or edit /etc/imgserv/analytics_config.json
-
-# Clear old images
-find /var/lib/imgserv/images -name "*.jpg" -mtime +1 -delete
-
-# Clear old sequences
-find /var/lib/imgserv/sequences -name "*.gif" -mtime +7 -delete
-```
-
-### Network Issues
-
-```bash
-# Test camera network
-ping 192.168.1.110
-
-# Test VPS network
-ping 198.23.249.133
-
-# Test DNS
-dig woodlandhillswebcam.industrialcamera.com
-
-# Check firewall on camera server
-iptables -L -n
-
-# Check firewall on VPS
-ssh -i /opt/imgserv/.ssh/vps_key root@198.23.249.133 "ufw status"
-```
+- **2025-10-24**: Created v2.0.0 with professional overlay system
+- **2025-10-24**: Added comprehensive costing documentation
+- **2025-10-24**: Implemented continuous black bar design
+- **2025-10-24**: Added horizontal layout with temperature positioning
+- **2025-10-24**: Enhanced readability with uniform 36px fonts
+- **2025-10-24**: Added raw image processing for maximum accuracy
+- **2025-10-24**: Consolidated documentation to 6 core files
+- **2025-10-24**: Added municipal budget justification and ROI analysis
 
 ---
 
-## Cost Structure
-
-### Monthly Operating Costs
-
-**Total Monthly Cost: $4.75**  
-**Total Annual Cost: $57.00**
-
-| Component | Monthly Cost | Annual Cost | Provider |
-|-----------|-------------|-------------|----------|
-| **VPS Hosting** | $3.50 | $42.00 | RackNerd (https://www.racknerd.com) |
-| **Domain & DNS** | $1.25 | $15.00 | GoDaddy (industrialcamera.com) |
-| **SSL Certificates** | $0.00 | $0.00 | Let's Encrypt (Free) |
-| **TOTAL** | **$4.75** | **$57.00** | |
-
-### Cost Optimization Features
-
-- **Efficient GIF Compression:** 60-80% size reduction (400-800KB per sequence)
-- **Smart Storage Management:** Automatic cleanup and monitoring
-- **Minimal Resource Usage:** Optimized for LXC containers
-- **Bandwidth Optimization:** ~9GB/month usage (well within 1TB VPS limit)
-- **Static Content Serving:** No database or dynamic processing on VPS
-
-### Municipal Budget Justification
-
-- **Cost Per Citizen:** <$0.01 per month (estimated 1,000 residents)
-- **Public Safety Value:** 24/7 road condition monitoring
-- **Operational Efficiency:** Reduces manual monitoring needs
-- **Low Financial Risk:** <$60/year total cost
-- **High Reliability:** VPS uptime guarantees
-
-### Detailed Analysis
-
-> **📊 Comprehensive Cost Analysis:** See [COSTING.md](COSTING.md) for detailed budget breakdown, ROI analysis, cost optimization details, bandwidth usage analysis, and future cost projections.
-
----
-
-## Future Development
-
-### Potential Enhancements
-
-1. **Multi-Camera Support**
-   - Track multiple cameras simultaneously
-   - Separate update intervals per camera
-   - Combined dashboard view
-
-2. **Advanced Analytics**
-   - Machine learning for snow depth estimation
-   - Historical trend analysis
-   - Predictive alerts based on forecast data
-
-3. **WebP Format Support**
-   - Even smaller file sizes than GIF
-   - Better compression for modern browsers
-   - Fallback to GIF for older browsers
-
-4. **Real-Time Alerts**
-   - Email/SMS notifications for hazardous conditions
-   - Webhook integration
-   - Discord/Slack notifications
-
-5. **Custom ROI Selection**
-   - Web UI for drawing road boundaries
-   - Per-camera analytics configuration
-   - Save/load ROI presets
-
-6. **Database Integration**
-   - Store analytics history in PostgreSQL/SQLite
-   - API for historical data queries
-   - Graphing and trend visualization
-
-7. **Mobile App**
-   - Native iOS/Android apps
-   - Push notifications
-   - Offline viewing of cached sequences
-
-8. **CDN Integration**
-   - CloudFlare or similar for global distribution
-   - Edge caching for faster load times
-   - Reduced VPS bandwidth usage
-
-### Code Quality Improvements
-
-- Increase test coverage (currently minimal)
-- Add integration tests for VPS sync
-- Implement CI/CD pipeline improvements
-- Add metrics dashboard (Prometheus + Grafana)
-- Improve error handling and recovery
-- Add configuration validation UI
-
----
-
-## Important Notes for AI Assistants
+## 🎯 Development Guidelines
 
 ### When Making Changes:
 
-1. **Always test in dev first:** Changes affect production monitoring
-2. **Respect the two-server architecture:** Camera server = processing, VPS = serving
-3. **Maintain backward compatibility:** Existing configs must continue working
-4. **Update version numbers:** Increment VERSION file and CHANGELOG.md
-5. **Test both servers:** Changes may affect camera server, VPS, or both
-6. **Document all changes:** Update README.md and this CONTEXT.md
-7. **Consider bandwidth:** VPS has 500GB monthly transfer limit
-8. **Preserve security:** Never expose camera credentials, keep config on camera server
-9. **Test SSL carefully:** Let's Encrypt rate limits (5 certs/week/domain)
-10. **Validate all configs:** Use ConfigManager validation before applying
-11. **ENSURE IDEMPOTENCY:** All installers and scripts must be safe to run multiple times
-12. **PRESERVE EXISTING KEYS:** Never regenerate SSH keys if they exist and work
-13. **TEST CONNECTIVITY:** Always verify SSH/RSYNC before making changes
-14. **VALIDATE VPS STATE:** Check nginx/SSL status before offering setup options
-15. **PRESERVE VPS CONFIG:** Never overwrite existing VPS settings in .env files
-16. **AUTO-DETECT VPS:** Use intelligent detection patterns for VPS configuration
-17. **SINGLE PASSWORD PROMPT:** Deploy SSH keys automatically, prompt password only once
+1. **Test Both Servers**: Changes may affect camera server, VPS, or both
+2. **Respect Architecture**: Camera server = processing, VPS = serving
+3. **Maintain Security**: Never expose camera credentials publicly
+4. **Update Documentation**: Keep all 6 docs in sync with code
+5. **Version Control**: Update VERSION and CHANGELOG.md
+6. **Test Configuration**: Ensure changes apply without restart
+7. **Monitor Costs**: Track bandwidth and resource usage
+8. **Preserve Quality**: Maintain professional appearance standards
 
 ### Common Mistakes to Avoid:
 
-- ❌ DON'T expose configuration endpoints on VPS
-- ❌ DON'T store credentials in git (use .env files)
-- ❌ DON'T use Python docstrings (""") in bash scripts
-- ❌ DON'T forget to escape special chars in bash
-- ❌ DON'T hardcode timing values (use config)
-- ❌ DON'T assume VPS has same packages as camera server
-- ❌ DON'T forget to reload service after config changes
-- ❌ DON'T break RSYNC (it's the critical link)
-- ❌ DON'T regenerate SSH keys if they exist and work
-- ❌ DON'T run installers without testing connectivity first
-- ❌ DON'T assume VPS needs setup without checking current state
-- ❌ DON'T overwrite existing VPS settings in .env files
-- ❌ DON'T prompt for password multiple times (deploy SSH key once)
-- ❌ DON'T detect 0.0.0.0 or local IPs as VPS configurations
+- ❌ DON'T process analytics on VPS (security risk)
+- ❌ DON'T store configuration on VPS (keep on camera server)
+- ❌ DON'T expose camera credentials in logs or configs
+- ❌ DON'T break RSYNC connectivity (critical for operation)
+- ❌ DON'T create new documentation files (use existing 6)
+- ❌ DON'T ignore error handling in async operations
+- ❌ DON'T hardcode values that should be configurable
+- ❌ DON'T forget to test both servers after changes
 
 ### Testing Checklist:
 
@@ -938,56 +575,8 @@ ssh -i /opt/imgserv/.ssh/vps_key root@198.23.249.133 "ufw status"
 
 ---
 
-## Quick Reference
-
-### Key URLs
-- **Public Website:** https://woodlandhillswebcam.industrialcamera.com
-- **Camera Server API:** http://localhost:8080 (internal only)
-- **Configuration UI:** http://localhost:8080/config (internal only)
-  - Interactive configuration page with live road detection visualization
-  - Inline road boundary display with metadata (road pixels, coverage %, contours)
-  - Refresh button for real-time boundary visualization
-  - All settings save without service restart
-- **Analytics API:** http://localhost:8080/analytics (internal only)
-- **Road Boundaries:** http://localhost:8080/analytics/road-boundaries (internal only, embedded in config page)
-
-### Key Paths
-- **Camera Server Code:** /opt/imgserv
-- **Camera Server Config:** /etc/imgserv/.env
-- **Dynamic Config:** /etc/imgserv/analytics_config.json
-- **Data Storage:** /var/lib/imgserv
-- **SSH Keys:** /opt/imgserv/.ssh/vps_key
-- **Service File:** /etc/systemd/system/imgserv.service
-- **VPS Web Root:** /var/www/html/monitoring
-- **SSL Certificates:** /etc/letsencrypt/live/woodlandhillswebcam.industrialcamera.com/
-
-### Key Commands
-```bash
-# Update camera server
-curl -sSL https://raw.githubusercontent.com/lazerusrm/IMGSRV/main/deploy/update-camera.sh | sudo bash
-
-# Update VPS (from camera server)
-sudo bash /opt/imgserv/deploy/update-vps-remote.sh
-
-# Restart service
-systemctl restart imgserv
-
-# View logs
-journalctl -u imgserv -f
-
-# Test everything
-curl http://localhost:8080/status | jq
-```
-
-### Cost Summary
-- **Monthly Operating Cost:** $4.75
-- **Annual Operating Cost:** $57.00
-- **Cost Per Citizen:** <$0.01/month
-- **Detailed Analysis:** [COSTING.md](COSTING.md)
-
----
+**Remember**: Quality over quantity. Update existing docs, don't create new ones!
 
 **End of Context Document**
 
 *This document should be updated whenever significant architectural changes are made.*
-
