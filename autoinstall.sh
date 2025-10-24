@@ -619,7 +619,13 @@ EOF
         fi
     fi
     
-    # Test VPS connectivity if configured
+    # Copy SSH key to root directory for service access
+    cp /opt/imgserv/.ssh/vps_key /root/.ssh/ 2>/dev/null || true
+    cp /opt/imgserv/.ssh/vps_key.pub /root/.ssh/ 2>/dev/null || true
+    chmod 600 /root/.ssh/vps_key 2>/dev/null || true
+    chmod 644 /root/.ssh/vps_key.pub 2>/dev/null || true
+    
+    # Test VPS connectivity if configured (AFTER environment file is created/preserved)
     VPS_CONNECTION_WORKING=false
     VPS_CONFIGURED=false
     
@@ -634,7 +640,7 @@ EOF
         
         # Check if VPS is explicitly enabled OR if VPS settings exist
         if grep -q "^VPS_ENABLED=true" /etc/imgserv/.env 2>/dev/null || \
-           ([ -n "$VPS_HOST" ] && [ "$VPS_HOST" != "your-vps-server.com" ] && [ "$VPS_HOST" != "" ]); then
+           ([ -n "$VPS_HOST" ] && [ "$VPS_HOST" != "your-vps-server.com" ] && [ "$VPS_HOST" != "" ] && [ "$VPS_HOST" != "0.0.0.0" ]); then
             VPS_CONFIGURED=true
             log "VPS configuration detected: $VPS_HOST"
         else
@@ -657,7 +663,7 @@ EOF
     fi
     
     if [ "$VPS_CONFIGURED" = true ]; then
-        if [ -n "$VPS_HOST" ] && [ "$VPS_HOST" != "your-vps-server.com" ]; then
+        if [ -n "$VPS_HOST" ] && [ "$VPS_HOST" != "your-vps-server.com" ] && [ "$VPS_HOST" != "0.0.0.0" ]; then
             log "Testing VPS connection..."
             if ssh -i /opt/imgserv/.ssh/vps_key -p ${VPS_PORT:-22} -o StrictHostKeyChecking=no -o ConnectTimeout=10 ${VPS_USER}@${VPS_HOST} "echo 'Connection test OK'" &>/dev/null; then
                 log "✅ VPS SSH connection working!"
@@ -713,12 +719,6 @@ EOF
             fi
         fi
     fi
-    
-    # Copy SSH key to root directory for service access
-    cp /opt/imgserv/.ssh/vps_key /root/.ssh/ 2>/dev/null || true
-    cp /opt/imgserv/.ssh/vps_key.pub /root/.ssh/ 2>/dev/null || true
-    chmod 600 /root/.ssh/vps_key 2>/dev/null || true
-    chmod 644 /root/.ssh/vps_key.pub 2>/dev/null || true
     
     # Handle VPS deployment based on connection test results
     if [ -f /etc/imgserv/.env ] && grep -q "^VPS_ENABLED=true" /etc/imgserv/.env 2>/dev/null; then
@@ -1076,7 +1076,7 @@ auto_detect_vps() {
         else
             # Check for any IP address that looks like a VPS
             VPS_IP=$(grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' /etc/imgserv/.env 2>/dev/null | head -1)
-            if [ -n "$VPS_IP" ] && [ "$VPS_IP" != "192.168.1.110" ] && [ "$VPS_IP" != "127.0.0.1" ]; then
+            if [ -n "$VPS_IP" ] && [ "$VPS_IP" != "192.168.1.110" ] && [ "$VPS_IP" != "127.0.0.1" ] && [ "$VPS_IP" != "0.0.0.0" ]; then
                 log "Detected potential VPS IP: $VPS_IP"
                 VPS_HOST="$VPS_IP"
                 VPS_USER="root"
