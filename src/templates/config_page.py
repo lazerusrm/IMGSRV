@@ -426,17 +426,17 @@ def create_config_page_html(config_data: Dict[str, Any]) -> str:
                     </div>
                 </div>
                 
-                <!-- Debug Tools -->
+                <!-- Debug Tools & ROI Editor -->
                 <div class="form-section">
-                    <h3>Debug Tools</h3>
+                    <h3>Road Detection & ROI Editor</h3>
                     
                     <div class="form-group">
-                        <label>Road Boundary Visualization</label>
-                        <div class="help-text">Shows the detected road boundaries used for analytics (green overlay)</div>
+                        <label>Live Camera Feed with ROI Editor</label>
+                        <div class="help-text">Click on the image to define monitoring regions. Shows detected road boundaries (green overlay) and your custom ROI (blue overlay).</div>
                         
                         <div id="road-viz-container" style="margin-top: 15px; border: 2px solid #ddd; border-radius: 8px; padding: 15px; background: #f9f9f9;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                                <span style="font-weight: bold; color: #333;">Live Road Detection</span>
+                                <span style="font-weight: bold; color: #333;">Live Road Detection & ROI Editor</span>
                                 <button type="button" onclick="refreshRoadVisualization()" class="btn btn-secondary" style="padding: 5px 15px;">
                                     <span id="refresh-icon">↻</span> Refresh
                                 </button>
@@ -452,12 +452,17 @@ def create_config_page_html(config_data: Dict[str, Any]) -> str:
                                 <div id="viz-error-message">Failed to load visualization</div>
                             </div>
                             
-                            <img id="road-viz-image" 
-                                 src="/analytics/road-boundaries?t={int(datetime.now().timestamp())}" 
-                                 alt="Road Boundary Visualization"
-                                 style="width: 100%; height: auto; border-radius: 4px; display: block;"
-                                 onload="document.getElementById('viz-loading').style.display='none';"
-                                 onerror="showVizError();">
+                            <div style="position: relative; display: inline-block; width: 100%;">
+                                <img id="road-viz-image" 
+                                     src="/analytics/road-boundaries?mode=raw&t={int(datetime.now().timestamp())}" 
+                                     alt="Road Boundary Visualization"
+                                     style="width: 100%; height: auto; border-radius: 4px; display: block; cursor: crosshair;"
+                                     onload="document.getElementById('viz-loading').style.display='none'; initializeROIEditor();"
+                                     onerror="showVizError();">
+                                
+                                <canvas id="roi-overlay-canvas" 
+                                        style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10;"></canvas>
+                            </div>
                             
                             <div id="viz-metadata" style="margin-top: 10px; padding: 10px; background: white; border-radius: 4px; font-size: 12px;">
                                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
@@ -488,14 +493,16 @@ def create_config_page_html(config_data: Dict[str, Any]) -> str:
                      <h3>Road Monitoring Region (ROI)</h3>
                      
                      <div class="help-text" style="margin-bottom: 15px;">
-                         Click on the image to define the area you want to monitor (parking lot + road). 
+                         Click on the image below to define the area you want to monitor (parking lot + road). 
                          Minimum 4 points, maximum 12 points. Click near the first point to close the polygon.
                      </div>
                      
-                     <div style="position: relative; border: 2px solid #ddd; border-radius: 8px; background: #000;">
-                         <canvas id="roi-canvas" style="display: block; max-width: 100%; cursor: crosshair;"></canvas>
-                         <img id="roi-base-image" src="/analytics/road-boundaries?mode=raw&t={int(datetime.now().timestamp())}" 
-                              style="display: none;" onload="initializeROICanvas()">
+                     <div class="form-group" style="margin-bottom: 15px;">
+                         <div class="checkbox-group">
+                             <input type="checkbox" id="road_roi_enabled" name="road_roi_enabled">
+                             <label for="road_roi_enabled">Enable Custom Road Monitoring Region</label>
+                         </div>
+                         <div class="help-text">Use the defined polygon for road analysis (unchecked = use default detection)</div>
                      </div>
                      
                      <div style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
@@ -508,14 +515,6 @@ def create_config_page_html(config_data: Dict[str, Any]) -> str:
                      <div id="roi-status" style="margin-top: 10px; padding: 10px; background: #f0f0f0; border-radius: 4px; font-size: 14px;">
                          <strong>Points:</strong> <span id="roi-point-count">0</span> / 12
                          <span id="roi-valid" style="margin-left: 20px;"></span>
-                     </div>
-                     
-                     <div class="form-group" style="margin-top: 15px;">
-                         <div class="checkbox-group">
-                             <input type="checkbox" id="road_roi_enabled" name="road_roi_enabled">
-                             <label for="road_roi_enabled">Enable Custom Road Monitoring Region</label>
-                         </div>
-                         <div class="help-text">Use the defined polygon for road analysis (unchecked = use default detection)</div>
                      </div>
                      
                      <input type="hidden" id="road_roi_points" name="road_roi_points" value="">
@@ -660,7 +659,7 @@ def create_config_page_html(config_data: Dict[str, Any]) -> str:
             
             // Fetch new image with timestamp to prevent caching
             const timestamp = new Date().getTime();
-            const newSrc = `/analytics/road-boundaries?t=${{timestamp}}`;
+            const newSrc = `/analytics/road-boundaries?mode=raw&t=${{timestamp}}`;
             
             // Fetch to get headers (metadata)
             fetch(newSrc)
@@ -683,6 +682,11 @@ def create_config_page_html(config_data: Dict[str, Any]) -> str:
                     img.src = newSrc;
                     img.style.display = 'block';
                     loading.style.display = 'none';
+                    
+                    // Reinitialize ROI editor when image loads
+                    img.onload = function() {{
+                        initializeROIEditor();
+                    }};
                     
                     // Stop spin animation
                     refreshIcon.style.animation = '';
@@ -712,44 +716,42 @@ def create_config_page_html(config_data: Dict[str, Any]) -> str:
         
         // ROI Editor State
         let roiPoints = [];
-        let roiCanvas = null;
-        let roiCtx = null;
-        let roiBaseImage = null;
-        let roiCanvasScale = 1.0;
+        let roiOverlayCanvas = null;
+        let roiOverlayCtx = null;
+        let roadVizImage = null;
+        let imageScale = 1.0;
         const MAX_POINTS = 12;
         const MIN_POINTS = 4;
         const POINT_RADIUS = 6;
         const CLOSE_THRESHOLD = 20;
 
-        function initializeROICanvas() {{
-            roiCanvas = document.getElementById('roi-canvas');
-            roiCtx = roiCanvas.getContext('2d');
-            roiBaseImage = document.getElementById('roi-base-image');
+        function initializeROIEditor() {{
+            roiOverlayCanvas = document.getElementById('roi-overlay-canvas');
+            roiOverlayCtx = roiOverlayCanvas.getContext('2d');
+            roadVizImage = document.getElementById('road-viz-image');
             
-            // Set canvas size to match image
-            const containerWidth = roiCanvas.parentElement.clientWidth;
-            roiCanvasScale = containerWidth / roiBaseImage.naturalWidth;
-            roiCanvas.width = roiBaseImage.naturalWidth;
-            roiCanvas.height = roiBaseImage.naturalHeight;
-            roiCanvas.style.width = containerWidth + 'px';
-            roiCanvas.style.height = (roiBaseImage.naturalHeight * roiCanvasScale) + 'px';
+            // Set canvas size to match image display size
+            const imgRect = roadVizImage.getBoundingClientRect();
+            roiOverlayCanvas.width = imgRect.width;
+            roiOverlayCanvas.height = imgRect.height;
             
-            // Draw base image
-            redrawROICanvas();
+            // Calculate scale factor for coordinate conversion
+            imageScale = roadVizImage.naturalWidth / imgRect.width;
             
             // Load existing ROI if available
             loadCurrentROI();
             
-            // Add click handler
-            roiCanvas.addEventListener('click', handleROICanvasClick);
+            // Add click handler to image
+            roadVizImage.addEventListener('click', handleROIImageClick);
+            
+            // Draw initial ROI overlay
+            redrawROIOverlay();
         }}
 
-        function handleROICanvasClick(event) {{
-            const rect = roiCanvas.getBoundingClientRect();
-            const scaleX = roiCanvas.width / rect.width;
-            const scaleY = roiCanvas.height / rect.height;
-            const x = (event.clientX - rect.left) * scaleX;
-            const y = (event.clientY - rect.top) * scaleY;
+        function handleROIImageClick(event) {{
+            const rect = roadVizImage.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
             
             // Check if clicking near first point to close polygon
             if (roiPoints.length >= MIN_POINTS) {{
@@ -758,7 +760,7 @@ def create_config_page_html(config_data: Dict[str, Any]) -> str:
                 if (dist < CLOSE_THRESHOLD) {{
                     // Close polygon
                     updateROIStatus();
-                    redrawROICanvas();
+                    redrawROIOverlay();
                     return;
                 }}
             }}
@@ -767,62 +769,61 @@ def create_config_page_html(config_data: Dict[str, Any]) -> str:
             if (roiPoints.length < MAX_POINTS) {{
                 roiPoints.push({{x, y}});
                 updateROIStatus();
-                redrawROICanvas();
+                redrawROIOverlay();
             }}
         }}
 
-        function redrawROICanvas() {{
-            if (!roiCtx || !roiBaseImage) return;
+        function redrawROIOverlay() {{
+            if (!roiOverlayCtx) return;
             
-            // Clear and draw base image
-            roiCtx.clearRect(0, 0, roiCanvas.width, roiCanvas.height);
-            roiCtx.drawImage(roiBaseImage, 0, 0);
+            // Clear canvas
+            roiOverlayCtx.clearRect(0, 0, roiOverlayCanvas.width, roiOverlayCanvas.height);
             
             if (roiPoints.length === 0) return;
             
             // Draw polygon lines
-            roiCtx.strokeStyle = '#00FF00';
-            roiCtx.lineWidth = 3;
-            roiCtx.setLineDash([]);
-            roiCtx.beginPath();
-            roiCtx.moveTo(roiPoints[0].x, roiPoints[0].y);
+            roiOverlayCtx.strokeStyle = '#0066FF';
+            roiOverlayCtx.lineWidth = 3;
+            roiOverlayCtx.setLineDash([]);
+            roiOverlayCtx.beginPath();
+            roiOverlayCtx.moveTo(roiPoints[0].x, roiPoints[0].y);
             for (let i = 1; i < roiPoints.length; i++) {{
-                roiCtx.lineTo(roiPoints[i].x, roiPoints[i].y);
+                roiOverlayCtx.lineTo(roiPoints[i].x, roiPoints[i].y);
             }}
             if (roiPoints.length >= MIN_POINTS) {{
-                roiCtx.closePath();
+                roiOverlayCtx.closePath();
             }}
-            roiCtx.stroke();
+            roiOverlayCtx.stroke();
             
             // Draw semi-transparent fill if closed
             if (roiPoints.length >= MIN_POINTS) {{
-                roiCtx.fillStyle = 'rgba(0, 255, 0, 0.15)';
-                roiCtx.fill();
+                roiOverlayCtx.fillStyle = 'rgba(0, 102, 255, 0.15)';
+                roiOverlayCtx.fill();
             }}
             
             // Draw points
             roiPoints.forEach((point, index) => {{
-                roiCtx.fillStyle = index === 0 ? '#FF0000' : '#00FF00';
-                roiCtx.beginPath();
-                roiCtx.arc(point.x, point.y, POINT_RADIUS, 0, 2 * Math.PI);
-                roiCtx.fill();
-                roiCtx.strokeStyle = '#FFFFFF';
-                roiCtx.lineWidth = 2;
-                roiCtx.stroke();
+                roiOverlayCtx.fillStyle = index === 0 ? '#FF0000' : '#0066FF';
+                roiOverlayCtx.beginPath();
+                roiOverlayCtx.arc(point.x, point.y, POINT_RADIUS, 0, 2 * Math.PI);
+                roiOverlayCtx.fill();
+                roiOverlayCtx.strokeStyle = '#FFFFFF';
+                roiOverlayCtx.lineWidth = 2;
+                roiOverlayCtx.stroke();
             }});
         }}
 
         function clearROIPoints() {{
             roiPoints = [];
             updateROIStatus();
-            redrawROICanvas();
+            redrawROIOverlay();
         }}
 
         function undoLastPoint() {{
             if (roiPoints.length > 0) {{
                 roiPoints.pop();
                 updateROIStatus();
-                redrawROICanvas();
+                redrawROIOverlay();
             }}
         }}
 
@@ -841,10 +842,10 @@ def create_config_page_html(config_data: Dict[str, Any]) -> str:
             }}
             
             // Update hidden field with normalized coordinates
-            if (roiPoints.length >= MIN_POINTS) {{
+            if (roiPoints.length >= MIN_POINTS && roadVizImage) {{
                 const normalized = roiPoints.map(p => [
-                    p.x / roiCanvas.width,
-                    p.y / roiCanvas.height
+                    p.x * imageScale / roadVizImage.naturalWidth,
+                    p.y * imageScale / roadVizImage.naturalHeight
                 ]);
                 document.getElementById('road_roi_points').value = JSON.stringify(normalized);
             }} else {{
@@ -860,14 +861,14 @@ def create_config_page_html(config_data: Dict[str, Any]) -> str:
                 if (result.status === 'success' && result.config.road_roi_points) {{
                     const normalized = result.config.road_roi_points;
                     roiPoints = normalized.map(p => ({{
-                        x: p[0] * roiCanvas.width,
-                        y: p[1] * roiCanvas.height
+                        x: p[0] * roadVizImage.naturalWidth / imageScale,
+                        y: p[1] * roadVizImage.naturalHeight / imageScale
                     }}));
                     
                     document.getElementById('road_roi_enabled').checked = result.config.road_roi_enabled || false;
                     
                     updateROIStatus();
-                    redrawROICanvas();
+                    redrawROIOverlay();
                     showStatus('Loaded saved ROI', 'success');
                 }}
             }} catch (error) {{
@@ -883,7 +884,10 @@ def create_config_page_html(config_data: Dict[str, Any]) -> str:
             
             // Save temporarily to test
             const config = {{
-                road_roi_points: roiPoints.map(p => [p.x / roiCanvas.width, p.y / roiCanvas.height]),
+                road_roi_points: roiPoints.map(p => [
+                    p.x * imageScale / roadVizImage.naturalWidth,
+                    p.y * imageScale / roadVizImage.naturalHeight
+                ]),
                 road_roi_enabled: true
             }};
             
