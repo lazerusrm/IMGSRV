@@ -50,6 +50,31 @@ A secure, efficient service for capturing IP camera snapshots and generating tra
 curl -sSL https://raw.githubusercontent.com/lazerusrm/IMGSRV/main/autoinstall.sh | bash
 ```
 
+### 📦 Quick Update (Existing Installation)
+
+**Update Camera Server:**
+```bash
+# Option 1: From repository directory
+sudo bash /opt/imgserv/deploy/update-camera.sh
+
+# Option 2: One-liner (anywhere)
+curl -sSL https://raw.githubusercontent.com/lazerusrm/IMGSRV/main/deploy/update-camera.sh | sudo bash
+```
+
+**Update VPS (Remote - No Login Required):**
+```bash
+# Run from camera server using existing SSH keys
+sudo bash /opt/imgserv/deploy/update-vps-remote.sh
+```
+
+This will:
+- Fix VPS permissions
+- Restart nginx
+- Update monitoring scripts
+- Force RSYNC sync
+- Test all endpoints
+- Check SSL status
+
 **Ultra-Simple Installation (Bypasses most errors):**
 
 ```bash
