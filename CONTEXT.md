@@ -293,7 +293,7 @@ VPS: /var/www/html/monitoring/   # Public web root
 - **RoadSurfaceAnalyzer:** Analyzes snow/wet/ice coverage via computer vision
 - **WeatherDataClient:** Fetches real-time data from NOAA API
 - **SnowAnalytics:** Combines vision + weather for accurate reporting
-- **Simplified Driver Alerts:** None, Light, Moderate, Heavy, Ice Possible
+- **Simplified Driver Alerts:** Clear, Light, Moderate, Heavy, Ice Possible
 - **Raw Image Processing:** Analytics performed on uncompressed camera data for maximum accuracy
 - **24-Hour Forecast Integration:** Provides specific snow/ice alerts with times
 
@@ -305,7 +305,7 @@ VPS: /var/www/html/monitoring/   # Public web root
   - Bottom-right corner: Timestamp
 - **Font Sizes:** Large (48px), Medium (36px), Small (28px) for excellent readability
 - **Background Boxes:** Semi-transparent black backgrounds behind all text elements
-- **Color-Coded Status:** Green (None), Yellow (Light), Orange (Moderate), Red (Heavy), Purple (Ice Possible)
+- **Color-Coded Status:** Green (Clear), Yellow (Light), Orange (Moderate), Red (Heavy), Purple (Ice Possible)
 - **Deprecated Legacy Methods:** Old overlay system marked as deprecated with warnings
 
 ### 7. Configuration Manager (`src/services/config_manager.py`)

@@ -32,7 +32,7 @@ A secure, efficient service for capturing IP camera snapshots and generating tra
 - **Traffic Camera Style**: Professional timestamp overlays and image sequences
 - **Configurable Update Intervals**: 1-30 minute GIF updates with dynamic photo spacing
 - **GIF Optimization**: Balanced compression (1280x720, 60-80% file size reduction)
-- **Simplified Driver Analytics**: Clean road condition alerts (None, Light, Moderate, Heavy, Ice Possible)
+- **Simplified Driver Analytics**: Clean road condition alerts (Clear, Light, Moderate, Heavy, Ice Possible)
 - **Raw Image Processing**: Analytics performed on uncompressed camera data for maximum accuracy
 - **24-Hour Forecast Integration**: Specific snow/ice alerts with exact times
 - **Enhanced Overlay System**: Strategic positioning with maximum readability

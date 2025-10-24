@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.3.0] - 2025-10-24
 
 ### Added - Enhanced Analytics System
-- **Simplified Driver Alerts**: Streamlined road condition categories to None, Light, Moderate, Heavy, Ice Possible
+- **Simplified Driver Alerts**: Streamlined road condition categories to Clear, Light, Moderate, Heavy, Ice Possible
 - **Raw Image Processing**: Analytics now performed on uncompressed camera data for maximum accuracy
 - **24-Hour Forecast Integration**: Added specific snow/ice alerts with exact times (e.g., "Heavy snow expected at 6:00 PM")
 - **Snow Probability Chart**: Added data structure for visualizing snow probability over time
@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Bottom-right corner: Timestamp
 - **Enhanced Visibility**: Added black text outlines for readability against any background
 - **Removed Backgrounds**: Clean, minimal design without semi-transparent overlays
-- **Color-Coded Status**: Green (None), Yellow (Light), Orange (Moderate), Red (Heavy), Purple (Ice Possible)
+- **Color-Coded Status**: Green (Clear), Yellow (Light), Orange (Moderate), Red (Heavy), Purple (Ice Possible)
 
 ### Fixed - Critical Analytics Issues
 - **Analytics Processing**: Fixed 'snow_analysis' key error in sequence service
