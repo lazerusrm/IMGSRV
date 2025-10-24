@@ -1,15 +1,15 @@
 #!/bin/bash
-"""
-SSL Setup via Camera Server
-Configures Let's Encrypt SSL on VPS remotely using brad@industrialcamera.com
-
-Prerequisites:
-- VPS must be accessible via SSH keys (already configured)
-- DNS A record must be configured and propagated
-
-Usage from camera server:
-  sudo bash deploy/setup-ssl-remote.sh
-"""
+#
+# SSL Setup via Camera Server
+# Configures Let's Encrypt SSL on VPS remotely using brad@industrialcamera.com
+#
+# Prerequisites:
+# - VPS must be accessible via SSH keys (already configured)
+# - DNS A record must be configured and propagated
+#
+# Usage from camera server:
+#   sudo bash deploy/setup-ssl-remote.sh
+#
 
 # Colors
 GREEN='\033[0;32m'

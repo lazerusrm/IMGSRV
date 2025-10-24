@@ -1,16 +1,16 @@
 #!/bin/bash
-"""
-VPS SSL Certificate Setup Script
-Automates Let's Encrypt SSL certificate generation for Woodland Hills webcam.
-
-Prerequisites:
-- Domain DNS A record pointing to this server
-- Ports 80 and 443 open in firewall
-- Nginx installed and configured
-
-Usage:
-  sudo bash vps-setup-ssl.sh [email@example.com]
-"""
+#
+# VPS SSL Certificate Setup Script
+# Automates Let's Encrypt SSL certificate generation for Woodland Hills webcam.
+#
+# Prerequisites:
+# - Domain DNS A record pointing to this server
+# - Ports 80 and 443 open in firewall
+# - Nginx installed and configured
+#
+# Usage:
+#   sudo bash vps-setup-ssl.sh [email@example.com]
+#
 
 # Colors for output
 RED='\033[0;31m'
@@ -215,7 +215,7 @@ update_firewall() {
     # Check if ufw is installed
     if command -v ufw &> /dev/null; then
         ufw allow 443/tcp comment 'HTTPS'
-        ufw allow 80/tcp comment 'HTTP (for Let\'s Encrypt)'
+        ufw allow 80/tcp comment 'HTTP for Let'\''s Encrypt'
         ufw status
         log "Firewall rules updated"
     else

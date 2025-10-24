@@ -1,23 +1,23 @@
 #!/bin/bash
-"""
-Remote VPS Update Script
-Run from camera server to update VPS without logging in directly.
-Uses existing RSYNC SSH keys for authentication.
-
-Prerequisites:
-- VPS_ENABLED=true in /etc/imgserv/.env
-- SSH keys already configured at /opt/imgserv/.ssh/vps_key
-- RSYNC working between camera server and VPS
-
-Usage:
-  sudo bash deploy/update-vps-remote.sh
-  
-This script will:
-- Pull latest code from GitHub to VPS
-- Restart nginx on VPS
-- Fix permissions on VPS
-- Test VPS endpoints
-"""
+#
+# Remote VPS Update Script
+# Run from camera server to update VPS without logging in directly.
+# Uses existing RSYNC SSH keys for authentication.
+#
+# Prerequisites:
+# - VPS_ENABLED=true in /etc/imgserv/.env
+# - SSH keys already configured at /opt/imgserv/.ssh/vps_key
+# - RSYNC working between camera server and VPS
+#
+# Usage:
+#   sudo bash deploy/update-vps-remote.sh
+#
+# This script will:
+# - Pull latest code from GitHub to VPS
+# - Restart nginx on VPS
+# - Fix permissions on VPS
+# - Test VPS endpoints
+#
 
 # Colors for output
 RED='\033[0;31m'

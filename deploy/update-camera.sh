@@ -1,14 +1,14 @@
 #!/bin/bash
-"""
-Camera Server Update Script
-Quick update script to pull latest code and restart service.
-
-Usage:
-  sudo bash deploy/update-camera.sh
-  
-Or one-liner:
-  curl -sSL https://raw.githubusercontent.com/lazerusrm/IMGSRV/main/deploy/update-camera.sh | sudo bash
-"""
+#
+# Camera Server Update Script
+# Quick update script to pull latest code and restart service.
+#
+# Usage:
+#   sudo bash deploy/update-camera.sh
+#
+# Or one-liner:
+#   curl -sSL https://raw.githubusercontent.com/lazerusrm/IMGSRV/main/deploy/update-camera.sh | sudo bash
+#
 
 # Colors for output
 RED='\033[0;31m'
