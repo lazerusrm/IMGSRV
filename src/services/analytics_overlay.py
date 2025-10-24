@@ -349,38 +349,41 @@ class AnalyticsOverlay:
             except:
                 font = ImageFont.load_default()
             
-            # Helper function to draw text with black background box
-            def draw_text_with_background(text, x, y, font, text_color, bg_color=(0, 0, 0, 200)):
-                # Get text bounding box
-                bbox = draw.textbbox((0, 0), text, font=font)
-                text_width = bbox[2] - bbox[0]
-                text_height = bbox[3] - bbox[1]
-                
-                # Calculate background box dimensions with padding
-                padding = 8
-                bg_x1 = x - padding
-                bg_y1 = y - padding
-                bg_x2 = x + text_width + padding
-                bg_y2 = y + text_height + padding
-                
-                # Draw black background box
-                draw.rectangle([bg_x1, bg_y1, bg_x2, bg_y2], fill=bg_color)
-                
-                # Draw text on top
+            # Helper function to draw text (no individual background boxes)
+            def draw_text_simple(text, x, y, font, text_color):
+                # Draw text directly
                 draw.text((x, y), text, font=font, fill=text_color)
                 
-                return text_width + padding * 2
+                # Return text width for spacing calculations
+                bbox = draw.textbbox((0, 0), text, font=font)
+                return bbox[2] - bbox[0]
             
-            # Draw location name in top-left corner with background box
+            # Draw location name in top-left corner with individual background box
             margin = 30
             location_text = "Woodland Hills City Center"
-            draw_text_with_background(
-                location_text, margin, margin, font, (255, 255, 255, 255)
-            )
             
-            # Calculate bottom 1/8th area for horizontal layout
+            # Draw location with individual background box (keep this one separate)
+            bbox = draw.textbbox((0, 0), location_text, font=font)
+            text_width = bbox[2] - bbox[0]
+            text_height = bbox[3] - bbox[1]
+            padding = 8
+            bg_x1 = margin - padding
+            bg_y1 = margin - padding
+            bg_x2 = margin + text_width + padding
+            bg_y2 = margin + text_height + padding
+            draw.rectangle([bg_x1, bg_y1, bg_x2, bg_y2], fill=(0, 0, 0, 200))
+            draw.text((margin, margin), location_text, font=font, fill=(255, 255, 255, 255))
+            
+            # Calculate bottom 1/8th area for continuous black bar
             bottom_area_height = height // 8
-            bottom_y = height - bottom_area_height + 20  # Start 20px up from bottom
+            bar_y1 = height - bottom_area_height
+            bar_y2 = height
+            
+            # Draw continuous black bar across entire bottom
+            draw.rectangle([0, bar_y1, width, bar_y2], fill=(0, 0, 0, 200))
+            
+            # Calculate text position (centered vertically in the bar)
+            text_y = bar_y1 + (bottom_area_height - text_height) // 2
             
             # Prepare all text elements for horizontal layout
             elements = []
@@ -388,10 +391,6 @@ class AnalyticsOverlay:
             # Road Condition
             road_text = f"Road Condition: {condition}"
             elements.append((road_text, color))
-            
-            # Temperature
-            temp_text = f"Temp: {temperature}"
-            elements.append((temp_text, (255, 255, 255, 255)))
             
             # Forecast alerts (up to 2 to fit horizontally)
             alerts = analytics_data.get("forecast_alerts", [])[:2]
@@ -408,24 +407,28 @@ class AnalyticsOverlay:
                 time_text = "N/A"
             elements.append((time_text, (255, 255, 255, 255)))
             
+            # Temperature (on the far right)
+            temp_text = f"Temp: {temperature}"
+            elements.append((temp_text, (255, 255, 255, 255)))
+            
             # Calculate total width needed and spacing
             total_text_width = 0
             for text, _ in elements:
                 bbox = draw.textbbox((0, 0), text, font=font)
                 text_width = bbox[2] - bbox[0]
-                total_text_width += text_width + 20  # 20px spacing between elements
+                total_text_width += text_width + 30  # 30px spacing between elements
             
             # Start position to center the elements horizontally
             start_x = (width - total_text_width) // 2
             start_x = max(margin, start_x)  # Ensure we don't go off-screen
             
-            # Draw all elements horizontally
+            # Draw all elements horizontally on the black bar
             current_x = start_x
             for text, text_color in elements:
-                element_width = draw_text_with_background(
-                    text, current_x, bottom_y, font, text_color
+                element_width = draw_text_simple(
+                    text, current_x, text_y, font, text_color
                 )
-                current_x += element_width + 20  # 20px spacing between elements
+                current_x += element_width + 30  # 30px spacing between elements
             
             # Convert back to numpy
             result_image = cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)
