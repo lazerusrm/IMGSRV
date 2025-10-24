@@ -192,7 +192,8 @@ class WeatherDataClient:
 class RoadDetector:
     """Detects road boundaries using edge detection."""
     
-    def __init__(self):
+    def __init__(self, config_manager=None):
+        self.config_manager = config_manager
         self.roi_points = None  # Region of Interest points
         self.roi_mask = None
     
@@ -207,6 +208,25 @@ class RoadDetector:
             Binary mask of road area
         """
         try:
+            # Get image dimensions
+            height, width = image.shape[:2]
+            
+            # Check if custom ROI is configured
+            if self.config_manager:
+                config = self.config_manager.get_config()
+                if config.get("road_roi_enabled") and config.get("road_roi_points"):
+                    roi_normalized = config["road_roi_points"]
+                    # Convert normalized (0-1) to pixel coordinates
+                    road_region = np.array([
+                        [int(p[0] * width), int(p[1] * height)] 
+                        for p in roi_normalized
+                    ], np.int32)
+                    
+                    road_mask = np.zeros((height, width), dtype=np.uint8)
+                    cv2.fillPoly(road_mask, [road_region], 255)
+                    return road_mask
+            
+            # Fall back to existing hardcoded logic if no custom ROI
             # Convert to grayscale
             gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
             
@@ -220,7 +240,6 @@ class RoadDetector:
             contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             
             # Create road mask (simplified approach)
-            height, width = image.shape[:2]
             road_mask = np.zeros((height, width), dtype=np.uint8)
             
             # Assume road is in the center-bottom area of the image
@@ -411,7 +430,9 @@ class SnowAnalytics:
     def __init__(self, settings: Settings):
         self.settings = settings
         self.weather_client = WeatherDataClient(settings)
-        self.road_detector = RoadDetector()
+        from src.services.config_manager import ConfigManager
+        config_manager = ConfigManager(settings)
+        self.road_detector = RoadDetector(config_manager=config_manager)
         self.road_analyzer = RoadSurfaceAnalyzer()
         
         # Analytics data storage

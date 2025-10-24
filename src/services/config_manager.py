@@ -43,6 +43,8 @@ class ConfigManager:
             "max_images_per_sequence": 10,
             "gif_frame_duration_seconds": 1.0,
             "gif_optimization_level": "balanced",
+            "road_roi_points": [],  # List of [x, y] normalized coordinates (0.0-1.0)
+            "road_roi_enabled": False,  # Whether to use custom ROI
             "last_updated": None
         }
         
@@ -147,7 +149,13 @@ class ConfigManager:
             "sequence_update_interval_minutes": lambda x: isinstance(x, int) and 1 <= x <= 60,
             "max_images_per_sequence": lambda x: isinstance(x, int) and 1 <= x <= 30,
             "gif_frame_duration_seconds": lambda x: isinstance(x, (int, float)) and 0.1 <= x <= 5.0,
-            "gif_optimization_level": lambda x: x in ["low", "balanced", "aggressive"]
+            "gif_optimization_level": lambda x: x in ["low", "balanced", "aggressive"],
+            "road_roi_points": lambda x: isinstance(x, list) and all(
+                isinstance(p, list) and len(p) == 2 and 
+                all(isinstance(c, (int, float)) and 0 <= c <= 1 for c in p) 
+                for p in x
+            ),
+            "road_roi_enabled": lambda x: isinstance(x, bool)
         }
         
         for key, value in updates.items():

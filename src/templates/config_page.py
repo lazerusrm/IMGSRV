@@ -481,9 +481,47 @@ def create_config_page_html(config_data: Dict[str, Any]) -> str:
                             </div>
                         </div>
                     </div>
-                </div>
-                
-                <!-- Warning Thresholds -->
+                 </div>
+                 
+                 <!-- Road Monitoring Region (ROI) -->
+                 <div class="form-section">
+                     <h3>Road Monitoring Region (ROI)</h3>
+                     
+                     <div class="help-text" style="margin-bottom: 15px;">
+                         Click on the image to define the area you want to monitor (parking lot + road). 
+                         Minimum 4 points, maximum 12 points. Click near the first point to close the polygon.
+                     </div>
+                     
+                     <div style="position: relative; border: 2px solid #ddd; border-radius: 8px; background: #000;">
+                         <canvas id="roi-canvas" style="display: block; max-width: 100%; cursor: crosshair;"></canvas>
+                         <img id="roi-base-image" src="/analytics/road-boundaries?mode=raw&t={int(datetime.now().timestamp())}" 
+                              style="display: none;" onload="initializeROICanvas()">
+                     </div>
+                     
+                     <div style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
+                         <button type="button" onclick="clearROIPoints()" class="btn btn-secondary">Clear Points</button>
+                         <button type="button" onclick="undoLastPoint()" class="btn btn-secondary">Undo Last</button>
+                         <button type="button" onclick="loadCurrentROI()" class="btn btn-secondary">Load Saved ROI</button>
+                         <button type="button" onclick="testROIVisualization()" class="btn btn-primary">Test ROI</button>
+                     </div>
+                     
+                     <div id="roi-status" style="margin-top: 10px; padding: 10px; background: #f0f0f0; border-radius: 4px; font-size: 14px;">
+                         <strong>Points:</strong> <span id="roi-point-count">0</span> / 12
+                         <span id="roi-valid" style="margin-left: 20px;"></span>
+                     </div>
+                     
+                     <div class="form-group" style="margin-top: 15px;">
+                         <div class="checkbox-group">
+                             <input type="checkbox" id="road_roi_enabled" name="road_roi_enabled">
+                             <label for="road_roi_enabled">Enable Custom Road Monitoring Region</label>
+                         </div>
+                         <div class="help-text">Use the defined polygon for road analysis (unchecked = use default detection)</div>
+                     </div>
+                     
+                     <input type="hidden" id="road_roi_points" name="road_roi_points" value="">
+                 </div>
+                 
+                 <!-- Warning Thresholds -->
                 <div class="form-section">
                     <h3>Warning Thresholds</h3>
                     
@@ -671,6 +709,204 @@ def create_config_page_html(config_data: Dict[str, Any]) -> str:
             }}
         `;
         document.head.appendChild(style);
+        
+        // ROI Editor State
+        let roiPoints = [];
+        let roiCanvas = null;
+        let roiCtx = null;
+        let roiBaseImage = null;
+        let roiCanvasScale = 1.0;
+        const MAX_POINTS = 12;
+        const MIN_POINTS = 4;
+        const POINT_RADIUS = 6;
+        const CLOSE_THRESHOLD = 20;
+
+        function initializeROICanvas() {{
+            roiCanvas = document.getElementById('roi-canvas');
+            roiCtx = roiCanvas.getContext('2d');
+            roiBaseImage = document.getElementById('roi-base-image');
+            
+            // Set canvas size to match image
+            const containerWidth = roiCanvas.parentElement.clientWidth;
+            roiCanvasScale = containerWidth / roiBaseImage.naturalWidth;
+            roiCanvas.width = roiBaseImage.naturalWidth;
+            roiCanvas.height = roiBaseImage.naturalHeight;
+            roiCanvas.style.width = containerWidth + 'px';
+            roiCanvas.style.height = (roiBaseImage.naturalHeight * roiCanvasScale) + 'px';
+            
+            // Draw base image
+            redrawROICanvas();
+            
+            // Load existing ROI if available
+            loadCurrentROI();
+            
+            // Add click handler
+            roiCanvas.addEventListener('click', handleROICanvasClick);
+        }}
+
+        function handleROICanvasClick(event) {{
+            const rect = roiCanvas.getBoundingClientRect();
+            const scaleX = roiCanvas.width / rect.width;
+            const scaleY = roiCanvas.height / rect.height;
+            const x = (event.clientX - rect.left) * scaleX;
+            const y = (event.clientY - rect.top) * scaleY;
+            
+            // Check if clicking near first point to close polygon
+            if (roiPoints.length >= MIN_POINTS) {{
+                const firstPoint = roiPoints[0];
+                const dist = Math.sqrt(Math.pow(x - firstPoint.x, 2) + Math.pow(y - firstPoint.y, 2));
+                if (dist < CLOSE_THRESHOLD) {{
+                    // Close polygon
+                    updateROIStatus();
+                    redrawROICanvas();
+                    return;
+                }}
+            }}
+            
+            // Add new point if under max
+            if (roiPoints.length < MAX_POINTS) {{
+                roiPoints.push({{x, y}});
+                updateROIStatus();
+                redrawROICanvas();
+            }}
+        }}
+
+        function redrawROICanvas() {{
+            if (!roiCtx || !roiBaseImage) return;
+            
+            // Clear and draw base image
+            roiCtx.clearRect(0, 0, roiCanvas.width, roiCanvas.height);
+            roiCtx.drawImage(roiBaseImage, 0, 0);
+            
+            if (roiPoints.length === 0) return;
+            
+            // Draw polygon lines
+            roiCtx.strokeStyle = '#00FF00';
+            roiCtx.lineWidth = 3;
+            roiCtx.setLineDash([]);
+            roiCtx.beginPath();
+            roiCtx.moveTo(roiPoints[0].x, roiPoints[0].y);
+            for (let i = 1; i < roiPoints.length; i++) {{
+                roiCtx.lineTo(roiPoints[i].x, roiPoints[i].y);
+            }}
+            if (roiPoints.length >= MIN_POINTS) {{
+                roiCtx.closePath();
+            }}
+            roiCtx.stroke();
+            
+            // Draw semi-transparent fill if closed
+            if (roiPoints.length >= MIN_POINTS) {{
+                roiCtx.fillStyle = 'rgba(0, 255, 0, 0.15)';
+                roiCtx.fill();
+            }}
+            
+            // Draw points
+            roiPoints.forEach((point, index) => {{
+                roiCtx.fillStyle = index === 0 ? '#FF0000' : '#00FF00';
+                roiCtx.beginPath();
+                roiCtx.arc(point.x, point.y, POINT_RADIUS, 0, 2 * Math.PI);
+                roiCtx.fill();
+                roiCtx.strokeStyle = '#FFFFFF';
+                roiCtx.lineWidth = 2;
+                roiCtx.stroke();
+            }});
+        }}
+
+        function clearROIPoints() {{
+            roiPoints = [];
+            updateROIStatus();
+            redrawROICanvas();
+        }}
+
+        function undoLastPoint() {{
+            if (roiPoints.length > 0) {{
+                roiPoints.pop();
+                updateROIStatus();
+                redrawROICanvas();
+            }}
+        }}
+
+        function updateROIStatus() {{
+            const countEl = document.getElementById('roi-point-count');
+            const validEl = document.getElementById('roi-valid');
+            
+            countEl.textContent = roiPoints.length;
+            
+            if (roiPoints.length >= MIN_POINTS) {{
+                validEl.innerHTML = '<span style="color: green;">✓ Valid polygon</span>';
+            }} else if (roiPoints.length > 0) {{
+                validEl.innerHTML = '<span style="color: orange;">⚠ Need ' + (MIN_POINTS - roiPoints.length) + ' more points</span>';
+            }} else {{
+                validEl.innerHTML = '';
+            }}
+            
+            // Update hidden field with normalized coordinates
+            if (roiPoints.length >= MIN_POINTS) {{
+                const normalized = roiPoints.map(p => [
+                    p.x / roiCanvas.width,
+                    p.y / roiCanvas.height
+                ]);
+                document.getElementById('road_roi_points').value = JSON.stringify(normalized);
+            }} else {{
+                document.getElementById('road_roi_points').value = '';
+            }}
+        }}
+
+        async function loadCurrentROI() {{
+            try {{
+                const response = await fetch('/config/analytics');
+                const result = await response.json();
+                
+                if (result.status === 'success' && result.config.road_roi_points) {{
+                    const normalized = result.config.road_roi_points;
+                    roiPoints = normalized.map(p => ({{
+                        x: p[0] * roiCanvas.width,
+                        y: p[1] * roiCanvas.height
+                    }}));
+                    
+                    document.getElementById('road_roi_enabled').checked = result.config.road_roi_enabled || false;
+                    
+                    updateROIStatus();
+                    redrawROICanvas();
+                    showStatus('Loaded saved ROI', 'success');
+                }}
+            }} catch (error) {{
+                console.error('Failed to load ROI:', error);
+            }}
+        }}
+
+        async function testROIVisualization() {{
+            if (roiPoints.length < MIN_POINTS) {{
+                showStatus('Please define at least 4 points', 'error');
+                return;
+            }}
+            
+            // Save temporarily to test
+            const config = {{
+                road_roi_points: roiPoints.map(p => [p.x / roiCanvas.width, p.y / roiCanvas.height]),
+                road_roi_enabled: true
+            }};
+            
+            try {{
+                await fetch('/config/analytics', {{
+                    method: 'POST',
+                    headers: {{'Content-Type': 'application/json'}},
+                    body: JSON.stringify(config)
+                }});
+                
+                // Refresh visualization
+                setTimeout(() => refreshRoadVisualization(), 500);
+                showStatus('Testing ROI - check visualization below', 'success');
+            }} catch (error) {{
+                showStatus('Test failed: ' + error.message, 'error');
+            }}
+        }}
+
+        // Update form submission to include ROI data
+        document.getElementById('config-form').addEventListener('submit', function(e) {{
+            // Ensure ROI points are up to date in hidden field
+            updateROIStatus();
+        }});
     </script>
 </body>
 </html>

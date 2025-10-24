@@ -416,10 +416,13 @@ def create_app(settings: Settings) -> FastAPI:
     
     @app.get("/analytics/road-boundaries")
     @limiter.limit(f"{settings.rate_limit_per_minute}/minute")
-    async def get_road_boundaries(request: Request):
+    async def get_road_boundaries(request: Request, mode: str = "annotated"):
         """
         Debug endpoint to visualize detected road boundaries.
         Returns an annotated image showing the road detection area.
+        
+        Args:
+            mode: "annotated" for visualization with overlay, "raw" for original image
         """
         try:
             if not sequence_service.analytics:
@@ -441,28 +444,39 @@ def create_app(settings: Settings) -> FastAPI:
             pil_image = Image.open(BytesIO(image_data))
             cv_image = cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)
             
-            # Visualize road boundaries
-            annotated_image, metadata = sequence_service.analytics.road_detector.visualize_road_boundaries(cv_image)
-            
-            # Convert back to bytes for response
-            _, buffer = cv2.imencode('.png', annotated_image)
-            image_bytes = buffer.tobytes()
-            
-            # Return image with metadata in headers
-            from fastapi.responses import Response
-            response = Response(
-                content=image_bytes,
-                media_type="image/png",
-                headers={
-                    "X-Road-Pixels": str(metadata.get("road_pixels", 0)),
-                    "X-Road-Percentage": str(metadata.get("road_percentage", 0)),
-                    "X-Contours-Detected": str(metadata.get("contours_detected", 0)),
-                    "X-Timestamp": timestamp.isoformat()
-                }
-            )
-            
-            logger.info("Road boundary visualization generated", metadata=metadata)
-            return response
+            if mode == "raw":
+                # Return original image without annotations for ROI editor
+                img_byte_arr = BytesIO()
+                pil_image.save(img_byte_arr, format='JPEG', quality=85)
+                img_byte_arr.seek(0)
+                
+                return Response(
+                    content=img_byte_arr.read(),
+                    media_type="image/jpeg"
+                )
+            else:
+                # Visualize road boundaries
+                annotated_image, metadata = sequence_service.analytics.road_detector.visualize_road_boundaries(cv_image)
+                
+                # Convert back to bytes for response
+                _, buffer = cv2.imencode('.png', annotated_image)
+                image_bytes = buffer.tobytes()
+                
+                # Return image with metadata in headers
+                from fastapi.responses import Response
+                response = Response(
+                    content=image_bytes,
+                    media_type="image/png",
+                    headers={
+                        "X-Road-Pixels": str(metadata.get("road_pixels", 0)),
+                        "X-Road-Percentage": str(metadata.get("road_percentage", 0)),
+                        "X-Contours-Detected": str(metadata.get("contours_detected", 0)),
+                        "X-Timestamp": timestamp.isoformat()
+                    }
+                )
+                
+                logger.info("Road boundary visualization generated", metadata=metadata)
+                return response
             
         except HTTPException:
             raise
