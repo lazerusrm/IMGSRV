@@ -243,6 +243,55 @@ class RoadDetector:
             mask = np.zeros((height, width), dtype=np.uint8)
             mask[height//2:, :] = 255
             return mask
+    
+    def visualize_road_boundaries(self, image: np.ndarray) -> Tuple[np.ndarray, Dict]:
+        """
+        Visualize detected road boundaries with overlay for debugging.
+        
+        Args:
+            image: Input image as numpy array
+            
+        Returns:
+            Tuple of (annotated image, metadata dictionary)
+        """
+        try:
+            # Detect road boundaries
+            road_mask = self.detect_road_boundaries(image)
+            
+            # Create visualization
+            annotated_image = image.copy()
+            
+            # Create green overlay for road area
+            green_overlay = np.zeros_like(annotated_image)
+            green_overlay[road_mask > 0] = [0, 255, 0]  # Green color
+            
+            # Blend overlay with original image (semi-transparent)
+            alpha = 0.3
+            annotated_image = cv2.addWeighted(annotated_image, 1, green_overlay, alpha, 0)
+            
+            # Draw boundary contours
+            contours, _ = cv2.findContours(road_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            cv2.drawContours(annotated_image, contours, -1, (0, 255, 0), 2)
+            
+            # Calculate metadata
+            road_pixels = np.sum(road_mask > 0)
+            total_pixels = road_mask.size
+            road_percentage = (road_pixels / total_pixels) * 100
+            
+            metadata = {
+                "road_pixels": int(road_pixels),
+                "total_pixels": int(total_pixels),
+                "road_percentage": round(road_percentage, 2),
+                "image_shape": image.shape,
+                "contours_detected": len(contours)
+            }
+            
+            return annotated_image, metadata
+            
+        except Exception as e:
+            logger.error("Road boundary visualization failed", error=str(e))
+            # Return original image with error
+            return image, {"error": str(e)}
 
 
 class RoadSurfaceAnalyzer:

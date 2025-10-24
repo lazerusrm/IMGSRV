@@ -402,6 +402,62 @@ def create_app(settings: Settings) -> FastAPI:
             logger.error("Analytics history endpoint error", error=str(e))
             return {"error": "Failed to get analytics history"}
     
+    @app.get("/analytics/road-boundaries")
+    @limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+    async def get_road_boundaries(request: Request):
+        """
+        Debug endpoint to visualize detected road boundaries.
+        Returns an annotated image showing the road detection area.
+        """
+        try:
+            if not sequence_service.analytics:
+                raise HTTPException(status_code=503, detail="Analytics not enabled")
+            
+            # Capture current frame from camera
+            try:
+                image_data, timestamp = await sequence_service.camera.capture_snapshot()
+            except Exception as e:
+                logger.error("Failed to capture image for road boundary visualization", error=str(e))
+                raise HTTPException(status_code=503, detail="Camera not available")
+            
+            # Convert to OpenCV format
+            import cv2
+            import numpy as np
+            from io import BytesIO
+            from PIL import Image
+            
+            pil_image = Image.open(BytesIO(image_data))
+            cv_image = cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)
+            
+            # Visualize road boundaries
+            annotated_image, metadata = sequence_service.analytics.road_detector.visualize_road_boundaries(cv_image)
+            
+            # Convert back to bytes for response
+            _, buffer = cv2.imencode('.png', annotated_image)
+            image_bytes = buffer.tobytes()
+            
+            # Return image with metadata in headers
+            from fastapi.responses import Response
+            response = Response(
+                content=image_bytes,
+                media_type="image/png",
+                headers={
+                    "X-Road-Pixels": str(metadata.get("road_pixels", 0)),
+                    "X-Road-Percentage": str(metadata.get("road_percentage", 0)),
+                    "X-Contours-Detected": str(metadata.get("contours_detected", 0)),
+                    "X-Timestamp": timestamp.isoformat()
+                }
+            )
+            
+            logger.info("Road boundary visualization generated", metadata=metadata)
+            return response
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error("Road boundaries endpoint error", error=str(e))
+            raise HTTPException(status_code=500, detail="Failed to generate road boundary visualization")
+    
     # Configuration endpoints (CAMERA SERVER ONLY - NOT EXPOSED TO VPS)
     @app.get("/config", response_class=HTMLResponse)
     @limiter.limit(f"{settings.rate_limit_per_minute}/minute")
@@ -457,6 +513,15 @@ def create_app(settings: Settings) -> FastAPI:
             
             if result.get("status") == "success":
                 logger.info("Configuration updated successfully", client_ip=client_ip)
+                
+                # Reload service configuration to apply new settings immediately
+                try:
+                    await sequence_service.reload_config()
+                    result["message"] = "Configuration updated and service reloaded successfully"
+                    logger.info("Service configuration reloaded", client_ip=client_ip)
+                except Exception as reload_error:
+                    logger.error("Failed to reload service config", error=str(reload_error))
+                    result["warning"] = "Configuration saved but service reload failed. Restart service manually."
             else:
                 logger.warning("Configuration update failed", client_ip=client_ip, error=result.get("message"))
             
