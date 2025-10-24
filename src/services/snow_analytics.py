@@ -36,7 +36,7 @@ class WeatherDataClient:
     
     def __init__(self, settings: Settings):
         self.settings = settings
-        self.cache_duration = 300  # 5 minutes
+        self.cache_duration = 60  # 1 minute (reduced for debugging)
         self._cache = {}
     
     async def get_current_weather(self, lat: float = 40.0, lon: float = -74.0) -> Dict:
@@ -75,6 +75,8 @@ class WeatherDataClient:
                             "source": "NOAA"
                         }
                         
+                        logger.info("Fetching weather data", lat=lat, lon=lon, url=url)
+                        
                         # Try to extract real weather data from NOAA response
                         try:
                             # Get forecast data
@@ -85,12 +87,14 @@ class WeatherDataClient:
                                         forecast_data = await forecast_response.json()
                                         if "properties" in forecast_data and "periods" in forecast_data["properties"]:
                                             current_period = forecast_data["properties"]["periods"][0]
+                                            forecast_temp = current_period.get("temperature", 45)
                                             weather_data.update({
-                                                "temperature": current_period.get("temperature", 45),
+                                                "temperature": forecast_temp,
                                                 "conditions": current_period.get("shortForecast", "Clear"),
                                                 "wind_speed": current_period.get("windSpeed", "0 mph").split()[0],
                                                 "wind_direction": current_period.get("windDirection", "N")
                                             })
+                                            logger.info("Parsed forecast temperature", forecast_temp=forecast_temp, period_name=current_period.get("name", "Unknown"))
                             
                             # Get observation station data for current conditions
                             if "properties" in data and "observationStations" in data["properties"]:
@@ -112,7 +116,9 @@ class WeatherDataClient:
                                                         # Extract temperature (in Celsius, convert to Fahrenheit)
                                                         if props.get("temperature", {}).get("value"):
                                                             temp_c = props["temperature"]["value"]
-                                                            weather_data["temperature"] = round((temp_c * 9/5) + 32, 1)
+                                                            temp_f = round((temp_c * 9/5) + 32, 1)
+                                                            weather_data["temperature"] = temp_f
+                                                            logger.info("Parsed temperature from NOAA", temp_c=temp_c, temp_f=temp_f, station_id=station_id)
                                                         
                                                         # Extract humidity
                                                         if props.get("relativeHumidity", {}).get("value"):
@@ -155,6 +161,7 @@ class WeatherDataClient:
                         
                         # Cache the result
                         self._cache[cache_key] = (weather_data, now)
+                        logger.info("Returning weather data", temperature=weather_data["temperature"], source=weather_data["source"], lat=lat, lon=lon)
                         return weather_data
                     else:
                         logger.warning("Weather API request failed", status=response.status)
