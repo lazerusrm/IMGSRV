@@ -5,6 +5,72 @@ All notable changes to the Image Sequence Server project will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2025-10-24
+
+### Added - Major Features
+- **Interactive Installer**: Streamlined installation with user prompts
+  - Optional VPS setup with yes/no prompt
+  - Domain name, SSL email, VPS credentials collection
+  - Camera IP, username, password configuration
+  - Input validation for domain, email, IP formats
+  - DNS propagation check with 30 retries (5 minutes)
+  - SSL certificate setup with 3 retry attempts
+  - Non-interactive mode support via environment variables
+  - Graceful error handling with manual override options
+  - Automatic dig installation if needed
+- **Inline Road Visualization**: Embedded debugging in config page
+  - Live road detection visualization without opening new tabs
+  - Refresh button with spinning animation
+  - Metadata display: road pixels, coverage %, contours, timestamp
+  - Auto-refresh on page load after 1 second
+  - Loading and error states
+  - Fetches headers for metadata extraction
+  - Green overlay showing detected road boundaries
+  - Improves UX by keeping all tools on one page
+
+### Enhanced
+- **VPS Automation**: Fully automated VPS deployment
+  - `setup_vps_with_automation()` orchestrates deployment
+  - `check_dns_propagation()` validates DNS before SSL
+  - `setup_ssl_with_retry()` handles SSL certificate installation
+  - Automatic SSH key deployment to VPS
+  - Password-based initial authentication
+  - Transition to key-based authentication
+  - Error recovery and retry logic
+- **Deployment Experience**: Improved installation flow
+  - Detect interactive vs non-interactive terminals
+  - Use environment variables in CI/CD scenarios
+  - Clear progress indicators
+  - Helpful error messages
+  - Manual override options for edge cases
+  - Summary of configured services
+- **Configuration Page**: Embedded debugging tools
+  - Road visualization inline instead of external link
+  - Real-time refresh capability
+  - Metadata display below visualization
+  - CSS animations for loading states
+  - JavaScript fetch API for header extraction
+
+### Fixed
+- Non-interactive installer now properly detects TTY
+- DNS propagation timeout extended to 5 minutes
+- SSL retry logic includes proper wait intervals
+- Input validation catches all invalid formats
+- IP octet validation (each must be ≤ 255)
+
+### Changed
+- Installer now prompts for VPS setup (opt-in instead of mandatory)
+- Camera server can run standalone without VPS
+- Road boundaries accessible inline, not new tab
+- Better separation of camera-only vs full deployment
+
+### Documentation
+- Updated README.md with interactive installer examples
+- Added non-interactive mode documentation
+- Updated CONTEXT.md deployment process
+- Documented DNS propagation checking
+- Added inline visualization details
+
 ## [1.2.0] - 2025-10-24
 
 ### Added - Major Features
