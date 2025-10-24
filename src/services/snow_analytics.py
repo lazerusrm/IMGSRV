@@ -366,9 +366,10 @@ class RoadSurfaceAnalyzer:
             else:
                 snow_coverage = 0.0
             
-            # Improved wetness detection with tighter ranges
-            lower_wet = np.array([0, 30, 30])   # Higher saturation minimum
-            upper_wet = np.array([180, 120, 120]) # Lower value maximum
+            # Much more conservative wetness detection - only detect obvious wetness
+            # Wet roads are typically darker, more saturated, and have reflections
+            lower_wet = np.array([0, 50, 20])   # Much higher saturation minimum, lower value
+            upper_wet = np.array([180, 150, 80]) # Much lower value maximum - only very dark areas
             wet_mask = cv2.inRange(masked_hsv, lower_wet, upper_wet)
             
             # Shadow detection - exclude very dark areas that might be shadows
@@ -376,10 +377,21 @@ class RoadSurfaceAnalyzer:
             upper_shadow = np.array([180, 255, 50])
             shadow_mask = cv2.inRange(masked_hsv, lower_shadow, upper_shadow)
             
-            # Remove shadow areas from wet detection
-            wet_mask = cv2.bitwise_and(wet_mask, cv2.bitwise_not(shadow_mask))
+            # Additional check: wet areas should have lower brightness AND higher saturation
+            # This helps distinguish wet from just dark/shadowy areas
+            wet_candidates = cv2.bitwise_and(wet_mask, cv2.bitwise_not(shadow_mask))
             
-            wet_pixels = np.sum(wet_mask > 0)
+            # Further filter: wet areas should have saturation > 60 and value < 60
+            hsv_wet_candidates = masked_hsv[wet_candidates > 0]
+            if len(hsv_wet_candidates) > 0:
+                # Only count pixels that are both dark AND saturated
+                saturated_dark = np.all([
+                    hsv_wet_candidates[:, 1] > 60,  # High saturation
+                    hsv_wet_candidates[:, 2] < 60   # Low value (dark)
+                ], axis=0)
+                wet_pixels = np.sum(saturated_dark)
+            else:
+                wet_pixels = 0
             wet_coverage = wet_pixels / road_pixels if road_pixels > 0 else 0.0
             
             # Analyze ice potential (very bright, low saturation, specific reflectivity)
@@ -433,36 +445,38 @@ class RoadSurfaceAnalyzer:
     
     def _classify_surface_condition(self, snow: float, wet: float, ice: float, brightness: float, temperature: float = 70, hour: int = 12, texture_variance: float = 0) -> str:
         """Classify road surface condition based on coverage analysis with environmental factors."""
+        
+        # Aggressive environmental adjustments for clear, dry conditions
+        # If it's sunny (bright) and moderate temperature, heavily favor dry
+        if brightness > 100 and temperature > 45 and temperature < 80:
+            wet = wet * 0.1  # Dramatically reduce wet detection in clear conditions
+        
         # Temperature-based adjustments
-        if temperature > 85:  # Too hot for wet roads without rain
-            wet = wet * 0.3  # Dramatically reduce wet detection
+        if temperature > 80:  # Hot weather - very unlikely to be wet
+            wet = wet * 0.05  # Almost eliminate wet detection
+        elif temperature > 60:  # Warm weather - unlikely to be wet
+            wet = wet * 0.2   # Heavily reduce wet detection
         elif temperature < 32:  # Freezing - wet is likely ice
-            if wet > 0.3:
+            if wet > 0.2:
                 return "icy"
         
         # Time-based shadow adjustment (morning/evening)
         if hour < 8 or hour > 18:
-            wet = wet * 0.7  # Reduce wet detection during shadow hours
+            wet = wet * 0.5  # Reduce wet detection during shadow hours
         
-        # Texture-based adjustment
-        if texture_variance > 500:  # High texture = likely dry
-            wet = wet * 0.5
+        # Texture-based adjustment - dry asphalt has high texture variance
+        if texture_variance > 300:  # Lowered threshold - dry roads have texture
+            wet = wet * 0.3  # Heavily reduce wet detection for textured surfaces
         
-        # Updated thresholds
-        if snow > 0.7:
-            return "snow_covered"
-        elif snow > 0.4:
-            return "partial_snow"
-        elif ice > 0.3:
+        # Simplified classification - only Dry, ICY, SNOWY
+        if snow > 0.3:  # Lowered threshold for snow detection
+            return "snowy"
+        elif ice > 0.2:  # Lowered threshold for ice detection
             return "icy"
-        elif wet > 0.6:  # Increased from 0.5
-            return "wet"
-        elif wet > 0.35:  # Increased from 0.2
-            return "damp"
-        elif brightness > 120:  # Lowered from 150
-            return "clean_dry"
+        elif wet > 0.8:  # Much higher threshold for wet - only very obvious wetness
+            return "dry"  # Even if wet, classify as dry for your use case
         else:
-            return "dry"
+            return "dry"  # Default to dry for all other conditions
 
 
 class SnowAnalytics:
