@@ -328,13 +328,15 @@ class RoadSurfaceAnalyzer:
         self.baseline_image = None
         self.baseline_timestamp = None
     
-    def analyze_road_surface(self, image: np.ndarray, road_mask: np.ndarray) -> Dict:
+    def analyze_road_surface(self, image: np.ndarray, road_mask: np.ndarray, temperature: float = 70, hour: int = 12) -> Dict:
         """
         Analyze road surface conditions (coverage, wetness, ice risk).
         
         Args:
             image: Input image as numpy array
             road_mask: Binary mask of road area
+            temperature: Current temperature in Fahrenheit
+            hour: Current hour (0-23) for time-based analysis
             
         Returns:
             Dictionary with road surface analysis results
@@ -364,10 +366,19 @@ class RoadSurfaceAnalyzer:
             else:
                 snow_coverage = 0.0
             
-            # Analyze wetness (darker, more saturated road surface)
-            lower_wet = np.array([0, 20, 40])
-            upper_wet = np.array([180, 100, 150])
+            # Improved wetness detection with tighter ranges
+            lower_wet = np.array([0, 30, 30])   # Higher saturation minimum
+            upper_wet = np.array([180, 120, 120]) # Lower value maximum
             wet_mask = cv2.inRange(masked_hsv, lower_wet, upper_wet)
+            
+            # Shadow detection - exclude very dark areas that might be shadows
+            lower_shadow = np.array([0, 0, 0])
+            upper_shadow = np.array([180, 255, 50])
+            shadow_mask = cv2.inRange(masked_hsv, lower_shadow, upper_shadow)
+            
+            # Remove shadow areas from wet detection
+            wet_mask = cv2.bitwise_and(wet_mask, cv2.bitwise_not(shadow_mask))
+            
             wet_pixels = np.sum(wet_mask > 0)
             wet_coverage = wet_pixels / road_pixels if road_pixels > 0 else 0.0
             
@@ -382,17 +393,23 @@ class RoadSurfaceAnalyzer:
             gray = cv2.cvtColor(masked_rgb, cv2.COLOR_RGB2GRAY)
             road_brightness = np.mean(gray[road_mask > 0]) if np.any(road_mask) else 0
             
+            # Texture analysis - wet roads have lower variance (smoother), dry roads higher variance
+            gray_road = gray[road_mask > 0]
+            texture_variance = np.var(gray_road) if len(gray_road) > 0 else 0
+            
             return {
                 "snow_coverage": round(snow_coverage, 3),
                 "wet_coverage": round(wet_coverage, 3),
                 "ice_coverage": round(ice_coverage, 3),
                 "road_brightness": round(road_brightness, 1),
+                "texture_variance": round(texture_variance, 1),
                 "road_pixels": int(road_pixels),
                 "snow_pixels": int(snow_pixels),
                 "wet_pixels": int(wet_pixels),
                 "ice_pixels": int(ice_pixels),
                 "surface_condition": self._classify_surface_condition(
-                    snow_coverage, wet_coverage, ice_coverage, road_brightness
+                    snow_coverage, wet_coverage, ice_coverage, road_brightness,
+                    temperature, hour, texture_variance
                 ),
                 "confidence": min(max(snow_coverage, wet_coverage, ice_coverage) * 2, 1.0)
             }
@@ -404,6 +421,7 @@ class RoadSurfaceAnalyzer:
                 "wet_coverage": 0.0,
                 "ice_coverage": 0.0,
                 "road_brightness": 0.0,
+                "texture_variance": 0.0,
                 "road_pixels": 0,
                 "snow_pixels": 0,
                 "wet_pixels": 0,
@@ -413,19 +431,35 @@ class RoadSurfaceAnalyzer:
                 "error": str(e)
             }
     
-    def _classify_surface_condition(self, snow: float, wet: float, ice: float, brightness: float) -> str:
-        """Classify road surface condition based on coverage analysis."""
+    def _classify_surface_condition(self, snow: float, wet: float, ice: float, brightness: float, temperature: float = 70, hour: int = 12, texture_variance: float = 0) -> str:
+        """Classify road surface condition based on coverage analysis with environmental factors."""
+        # Temperature-based adjustments
+        if temperature > 85:  # Too hot for wet roads without rain
+            wet = wet * 0.3  # Dramatically reduce wet detection
+        elif temperature < 32:  # Freezing - wet is likely ice
+            if wet > 0.3:
+                return "icy"
+        
+        # Time-based shadow adjustment (morning/evening)
+        if hour < 8 or hour > 18:
+            wet = wet * 0.7  # Reduce wet detection during shadow hours
+        
+        # Texture-based adjustment
+        if texture_variance > 500:  # High texture = likely dry
+            wet = wet * 0.5
+        
+        # Updated thresholds
         if snow > 0.7:
             return "snow_covered"
         elif snow > 0.4:
             return "partial_snow"
         elif ice > 0.3:
             return "icy"
-        elif wet > 0.5:
+        elif wet > 0.6:  # Increased from 0.5
             return "wet"
-        elif wet > 0.2:
+        elif wet > 0.35:  # Increased from 0.2
             return "damp"
-        elif brightness > 150:
+        elif brightness > 120:  # Lowered from 150
             return "clean_dry"
         else:
             return "dry"
@@ -475,6 +509,9 @@ class SnowAnalytics:
             # Detect road boundaries
             road_mask = self.road_detector.detect_road_boundaries(image_rgb)
             
+            # Get current hour for time-based analysis
+            current_hour = timestamp.hour
+            
             # Analyze road surface conditions (from camera image)
             road_analysis = self.road_analyzer.analyze_road_surface(image_rgb, road_mask)
             
@@ -482,6 +519,13 @@ class SnowAnalytics:
             weather_data = await self.weather_client.get_current_weather(
                 lat=self.settings.weather_latitude,
                 lon=self.settings.weather_longitude
+            )
+            
+            # Re-analyze road surface with environmental context
+            road_analysis = self.road_analyzer.analyze_road_surface(
+                image_rgb, road_mask, 
+                temperature=weather_data.get("temperature", 70),
+                hour=current_hour
             )
             
             # Calculate accumulation rate from weather data
