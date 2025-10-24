@@ -1,6 +1,6 @@
 # Image Sequence Server
 
-**Version: 1.1.0** | **Release Date: 2025-10-17**
+**Version: 1.2.0** | **Release Date: 2025-10-24**
 
 **⚠️ PROPRIETARY SOFTWARE - ALL RIGHTS RESERVED**
 
@@ -28,10 +28,16 @@ A secure, efficient service for capturing IP camera snapshots and generating tra
 
 - **RTSP Camera Integration**: Secure RTSP stream capture using ffmpeg
 - **Traffic Camera Style**: Professional timestamp overlays and image sequences
+- **Configurable Update Intervals**: 1-30 minute GIF updates with dynamic photo spacing
+- **GIF Optimization**: Balanced compression (1280x720, 60-80% file size reduction)
+- **Snow Load Analytics**: Computer vision-based road surface condition analysis
+- **Weather Data Integration**: Real-time weather data from NOAA API
+- **Road Boundary Visualization**: Debug endpoint to verify detection areas
 - **Security Hardened**: Rate limiting, input validation, HTTPS, and isolation
+- **Let's Encrypt SSL**: Automated SSL certificate generation and renewal
 - **Resource Optimized**: Minimal memory and CPU usage for LXC containers
-- **Production Ready**: Systemd service, nginx reverse proxy, SSL certificates
-- **Auto-refresh**: Web interface updates every 5 minutes
+- **Production Ready**: Systemd service, nginx reverse proxy, auto-configuration
+- **Auto-refresh**: Web interface with configurable update intervals
 - **Storage Management**: Automatic cleanup and storage monitoring
 
 ## Quick Start
@@ -113,13 +119,24 @@ The system includes a comprehensive web-based configuration interface:
 - **Configuration Page**: `http://camera-server:8080/config`
 - **Location**: Camera server only (internal network)
 - **Security**: Not exposed to public VPS
-- **Features**: Location settings, analytics options, overlay styles
+- **Features**: Location settings, analytics options, overlay styles, update intervals, GIF optimization
 
 ### **Configuration Options**:
 - **Location Settings**: Latitude/longitude, location name (default: Woodland Hills, Utah)
 - **Analytics Settings**: Enable/disable, update intervals, detection thresholds
+- **Update Interval Settings**: 
+  - GIF update interval (1, 2, 5, 10, 15, 30 minutes)
+  - Images per sequence (5-30 frames)
+  - Frame duration (0.5-5.0 seconds)
+  - Automatically calculated capture intervals
+- **GIF Optimization**: 
+  - Low (256 colors, larger file)
+  - Balanced (192 colors, good quality) - Recommended
+  - Aggressive (128 colors, smallest file)
+  - All GIFs automatically resized to 1280x720 for web
 - **Overlay Styles**: Full, minimal, mobile, or none
 - **Warning Thresholds**: Ice temperature, hazardous snow depth
+- **Debug Tools**: Road boundary visualization for analytics verification
 
 ### **Security Architecture**:
 - **Configuration**: Camera server only (behind firewall)
@@ -235,6 +252,53 @@ systemctl restart imgserv
 
 # Check VPS sync status
 curl http://localhost:8080/status | jq '.vps_sync_status'
+```
+
+#### 5. Setup SSL Certificate (Let's Encrypt)
+
+**Prerequisites:**
+- Domain name pointing to VPS (e.g., woodlandhillswebcam.industrialcamera.com)
+- Ports 80 and 443 open in firewall
+
+**Configure DNS in GoDaddy:**
+1. Log into GoDaddy DNS management for industrialcamera.com
+2. Add an A record:
+   - Type: A
+   - Name: woodlandhillswebcam
+   - Value: 198.23.249.133 (your VPS IP)
+   - TTL: 600 (10 minutes)
+3. Wait 5-30 minutes for DNS propagation
+
+**Verify DNS:**
+```bash
+dig woodlandhillswebcam.industrialcamera.com
+# Should return your VPS IP
+```
+
+**Run SSL Setup Script on VPS:**
+```bash
+# On your VPS server (run as root)
+cd /root
+curl -sSL https://raw.githubusercontent.com/lazerusrm/IMGSRV/main/deploy/vps-setup-ssl.sh -o vps-setup-ssl.sh
+bash vps-setup-ssl.sh your-email@example.com
+```
+
+The script will:
+- ✅ Check DNS configuration
+- ✅ Install certbot and nginx plugin
+- ✅ Obtain SSL certificate from Let's Encrypt
+- ✅ Configure nginx for HTTPS
+- ✅ Setup HTTP to HTTPS redirect
+- ✅ Enable automatic certificate renewal
+- ✅ Verify SSL configuration
+
+**Test SSL:**
+```bash
+# Test HTTPS
+curl -I https://woodlandhillswebcam.industrialcamera.com
+
+# Test SSL Labs (in browser)
+https://www.ssllabs.com/ssltest/analyze.html?d=woodlandhillswebcam.industrialcamera.com
 ```
 
 ### VPS Endpoints:
@@ -416,6 +480,61 @@ curl https://your-server/status
    
    # Manual cleanup
    sudo -u imgserv find /var/lib/imgserv -name "*.jpg" -mtime +1 -delete
+   ```
+
+4. **GIF Not Updating**
+   ```bash
+   # Check sequence service status
+   systemctl status imgserv
+   
+   # View recent logs
+   journalctl -u imgserv -n 100 --no-pager
+   
+   # Test manual sequence generation
+   curl http://localhost:8080/status
+   
+   # Check update interval configuration
+   cat /etc/imgserv/analytics_config.json | jq '.sequence_update_interval_minutes'
+   ```
+
+5. **SSL Certificate Issues**
+   ```bash
+   # Check certificate status
+   certbot certificates
+   
+   # Test renewal
+   certbot renew --dry-run
+   
+   # Check nginx error logs
+   tail -f /var/log/nginx/error.log
+   
+   # Verify ports are open
+   sudo ufw status
+   sudo netstat -tulpn | grep -E ':(80|443)'
+   ```
+
+6. **Road Boundary Visualization Not Working**
+   ```bash
+   # Test the endpoint directly
+   curl -I http://localhost:8080/analytics/road-boundaries
+   
+   # Check analytics service is enabled
+   grep 'analytics_enabled' /etc/imgserv/.env
+   
+   # View analytics logs
+   journalctl -u imgserv -n 50 | grep -i analytics
+   ```
+
+7. **Configuration Changes Not Applying**
+   ```bash
+   # Check if service reloaded
+   journalctl -u imgserv -n 20 | grep -i "reload"
+   
+   # Manually reload configuration
+   systemctl restart imgserv
+   
+   # Verify configuration file
+   cat /etc/imgserv/analytics_config.json | jq '.'
    ```
 
 ### Performance Tuning
