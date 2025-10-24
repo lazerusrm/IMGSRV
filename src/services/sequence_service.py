@@ -143,21 +143,20 @@ class ImageSequenceService:
                 # Capture snapshot
                 image_data, timestamp = await self.camera.capture_snapshot()
                 
-                # Save image
-                await self.storage.save_image(image_data, timestamp)
-                
-                # Process analytics if enabled
+                # Process analytics on RAW image data before compression
+                analytics_result = None
                 if self.analytics:
                     try:
-                        # Get the saved image path for analytics
-                        image_path = self.storage.get_image_path(timestamp)
-                        if image_path and image_path.exists():
-                            analytics_result = await self.analytics.analyze_image(image_path, timestamp)
-                            logger.info("Analytics processed", 
-                                       snow_coverage=analytics_result["snow_analysis"]["snow_coverage"],
-                                       road_status=analytics_result["road_status"])
+                        # Analyze the raw image data directly (before any compression)
+                        analytics_result = await self.analytics.analyze_raw_image(image_data, timestamp)
+                        logger.info("Analytics processed", 
+                                   snow_coverage=analytics_result["snow_analysis"]["snow_coverage"],
+                                   road_status=analytics_result["road_status"])
                     except Exception as e:
                         logger.warning("Analytics processing failed", error=str(e))
+                
+                # Save image (after analytics)
+                await self.storage.save_image(image_data, timestamp)
                 
                 # Reset failure counter on success
                 consecutive_failures = 0

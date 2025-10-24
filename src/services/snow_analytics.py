@@ -500,6 +500,85 @@ class SnowAnalytics:
         
         logger.info("Snow analytics service initialized")
     
+    async def analyze_raw_image(self, image_data: bytes, timestamp: datetime) -> Dict:
+        """
+        Analyze raw image data directly (before any compression).
+        
+        Args:
+            image_data: Raw image bytes from camera
+            timestamp: When the image was captured
+            
+        Returns:
+            Dictionary with complete analysis results
+        """
+        try:
+            # Convert raw bytes to numpy array
+            image = cv2.imdecode(np.frombuffer(image_data, np.uint8), cv2.IMREAD_COLOR)
+            if image is None:
+                raise SnowAnalyticsError("Could not decode raw image data")
+            
+            # Convert BGR to RGB
+            image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            
+            # Detect road boundaries
+            road_mask = self.road_detector.detect_road_boundaries(image_rgb)
+            
+            # Get current hour for time-based analysis
+            current_hour = timestamp.hour
+            
+            # Get weather data (includes real snow depth and temperature)
+            weather_data = await self.weather_client.get_current_weather(
+                lat=self.settings.weather_latitude,
+                lon=self.settings.weather_longitude
+            )
+            
+            # Analyze road surface with environmental context
+            road_analysis = self.road_analyzer.analyze_road_surface(
+                image_rgb, road_mask, 
+                temperature=weather_data.get("temperature", 70),
+                hour=current_hour
+            )
+            
+            # Calculate accumulation rate from weather data
+            accumulation_rate = self._calculate_accumulation_rate(weather_data)
+            
+            # Generate predictions
+            predictions = self._generate_predictions(weather_data)
+            
+            # Compile results
+            analysis_result = {
+                "timestamp": timestamp.isoformat(),
+                "image_source": "raw_bytes",
+                "road_analysis": road_analysis,  # Camera-based road surface analysis
+                "weather_data": weather_data,     # Real weather data (temp, snow depth, etc.)
+                "snow_analysis": {                # Combined data for backward compatibility
+                    "snow_coverage": road_analysis["snow_coverage"],
+                    "snow_depth": weather_data.get("snow_depth_inches", 0.0),
+                    "temperature": weather_data.get("temperature", 45),
+                    "surface_condition": road_analysis["surface_condition"],
+                    "confidence": road_analysis["confidence"]
+                },
+                "accumulation_rate": accumulation_rate,
+                "predictions": predictions,
+                "road_status": road_analysis["surface_condition"].title()
+            }
+            
+            # Store in historical data
+            self.historical_data.append(analysis_result)
+            if len(self.historical_data) > self.max_history:
+                self.historical_data.pop(0)
+            
+            logger.info("Raw image analysis completed", 
+                       surface_condition=road_analysis["surface_condition"],
+                       temperature=weather_data.get("temperature", 45),
+                       snow_coverage=road_analysis["snow_coverage"])
+            
+            return analysis_result
+            
+        except Exception as e:
+            logger.error("Raw image analysis failed", error=str(e))
+            raise SnowAnalyticsError(f"Raw image analysis failed: {e}")
+    
     async def analyze_image(self, image_path: Path, timestamp: datetime) -> Dict:
         """
         Analyze a single image for snow load data.
