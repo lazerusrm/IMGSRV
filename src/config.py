@@ -61,7 +61,7 @@ class Settings(BaseSettings):
     weather_latitude: float = Field(default=40.011771, description="Latitude for weather data")
     weather_longitude: float = Field(default=-111.648000, description="Longitude for weather data")
     analytics_overlay_enabled: bool = Field(default=True, description="Enable analytics overlays on images")
-    analytics_overlay_style: str = Field(default="full", description="Overlay style: full, minimal, mobile")
+    analytics_overlay_style: str = Field(default="minimal", description="Overlay style: full, minimal, mobile")
     
     # VPS synchronization settings
     vps_enabled: bool = Field(default=False, description="Enable VPS synchronization")

@@ -150,8 +150,8 @@ class ImageSequenceService:
                         # Analyze the raw image data directly (before any compression)
                         analytics_result = await self.analytics.analyze_raw_image(image_data, timestamp)
                         logger.info("Analytics processed", 
-                                   snow_coverage=analytics_result["snow_analysis"]["snow_coverage"],
-                                   road_status=analytics_result["road_status"])
+                                   road_condition=analytics_result["road_condition"],
+                                   temperature=analytics_result["temperature"])
                     except Exception as e:
                         logger.warning("Analytics processing failed", error=str(e))
                 

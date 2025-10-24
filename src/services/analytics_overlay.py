@@ -159,8 +159,15 @@ class AnalyticsOverlay:
             logger.warning("Header drawing failed", error=str(e))
     
     def _draw_snow_data(self, draw: ImageDraw.Draw, analytics_data: Dict, font_medium, font_small):
-        """Draw snow analysis data."""
+        """Draw snow analysis data - DEPRECATED: Use create_minimal_overlay instead."""
         try:
+            # Check if this is the new simplified data structure
+            if "road_condition" in analytics_data:
+                # New simplified structure - redirect to minimal overlay
+                logger.warning("Using deprecated _draw_snow_data with new data structure. Use create_minimal_overlay instead.")
+                return
+            
+            # Old structure (for backward compatibility)
             snow_analysis = analytics_data.get("snow_analysis", {})
             snow_coverage = snow_analysis.get("snow_coverage", 0.0)
             snow_depth = snow_analysis.get("snow_depth_inches", 0.0)
@@ -193,8 +200,15 @@ class AnalyticsOverlay:
             logger.warning("Snow data drawing failed", error=str(e))
     
     def _draw_weather_data(self, draw: ImageDraw.Draw, analytics_data: Dict, font_medium, font_small):
-        """Draw weather data."""
+        """Draw weather data - DEPRECATED: Use create_minimal_overlay instead."""
         try:
+            # Check if this is the new simplified data structure
+            if "road_condition" in analytics_data:
+                # New simplified structure - redirect to minimal overlay
+                logger.warning("Using deprecated _draw_weather_data with new data structure. Use create_minimal_overlay instead.")
+                return
+            
+            # Old structure (for backward compatibility)
             weather_data = analytics_data.get("weather_data", {})
             temperature = weather_data.get("temperature", 32)
             conditions = weather_data.get("conditions", "Unknown")
@@ -227,8 +241,15 @@ class AnalyticsOverlay:
             logger.warning("Weather data drawing failed", error=str(e))
     
     def _draw_predictions(self, draw: ImageDraw.Draw, analytics_data: Dict, font_medium, font_small):
-        """Draw predictions."""
+        """Draw predictions - DEPRECATED: Use create_minimal_overlay instead."""
         try:
+            # Check if this is the new simplified data structure
+            if "road_condition" in analytics_data:
+                # New simplified structure - redirect to minimal overlay
+                logger.warning("Using deprecated _draw_predictions with new data structure. Use create_minimal_overlay instead.")
+                return
+            
+            # Old structure (for backward compatibility)
             predictions = analytics_data.get("predictions", {})
             accumulation = analytics_data.get("accumulation_rate", {})
             
@@ -255,8 +276,15 @@ class AnalyticsOverlay:
             logger.warning("Predictions drawing failed", error=str(e))
     
     def _draw_status(self, draw: ImageDraw.Draw, analytics_data: Dict, font_medium):
-        """Draw road status."""
+        """Draw road status - DEPRECATED: Use create_minimal_overlay instead."""
         try:
+            # Check if this is the new simplified data structure
+            if "road_condition" in analytics_data:
+                # New simplified structure - redirect to minimal overlay
+                logger.warning("Using deprecated _draw_status with new data structure. Use create_minimal_overlay instead.")
+                return
+            
+            # Old structure (for backward compatibility)
             road_status = analytics_data.get("road_status", "Unknown")
             
             y_pos = 400  # Start after predictions section (moved down)
