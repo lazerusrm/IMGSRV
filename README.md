@@ -35,7 +35,8 @@ A secure, efficient service for capturing IP camera snapshots and generating tra
 - **Simplified Driver Analytics**: Clean road condition alerts (None, Light, Moderate, Heavy, Ice Possible)
 - **Raw Image Processing**: Analytics performed on uncompressed camera data for maximum accuracy
 - **24-Hour Forecast Integration**: Specific snow/ice alerts with exact times
-- **Enhanced Overlay System**: Strategic positioning with enhanced text visibility
+- **Enhanced Overlay System**: Strategic positioning with maximum readability
+- **Large Font Sizes**: 48px, 36px, 28px fonts with black background boxes for excellent visibility
 - **Road Boundary Visualization**: Embedded inline visualization with refresh button in config page (no separate tab needed)
   - Real-time road detection overlay
   - Metadata display (road pixels, coverage %, contours, timestamp)

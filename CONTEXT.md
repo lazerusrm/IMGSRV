@@ -298,12 +298,13 @@ VPS: /var/www/html/monitoring/   # Public web root
 - **24-Hour Forecast Integration:** Provides specific snow/ice alerts with times
 
 ### 6. Analytics Overlay (`src/services/analytics_overlay.py`)
-- **Minimal Driver-Focused Design:** Clean, readable overlays without backgrounds
+- **Enhanced Readability Design:** Large fonts with black background boxes for maximum visibility
 - **Strategic Positioning:** 
   - Top-left: Location name only ("Woodland Hills City Center")
   - Bottom-right: Road condition, temperature, forecast alerts
   - Bottom-right corner: Timestamp
-- **Enhanced Visibility:** Black text outlines for readability against any background
+- **Font Sizes:** Large (48px), Medium (36px), Small (28px) for excellent readability
+- **Background Boxes:** Semi-transparent black backgrounds behind all text elements
 - **Color-Coded Status:** Green (None), Yellow (Light), Orange (Moderate), Red (Heavy), Purple (Ice Possible)
 - **Deprecated Legacy Methods:** Old overlay system marked as deprecated with warnings
 

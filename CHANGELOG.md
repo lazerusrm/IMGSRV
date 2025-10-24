@@ -34,11 +34,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Old Overlay Methods**: Marked legacy overlay methods as deprecated with warnings
 - **Complex Analytics**: Removed snow coverage, snow depth, confidence from primary display
 
-### Improved - Code Quality
+### Improved - Code Quality & Readability
 - **Error Handling**: Enhanced error handling in analytics processing
 - **Logging**: Improved logging for analytics data flow
 - **Mobile Overlay**: Updated mobile overlay to use minimal overlay for consistency
-- **Text Visibility**: All text now has outlines for maximum readability
+- **Enhanced Readability**: 
+  - Significantly larger fonts (48px, 36px, 28px) for all overlay text
+  - Semi-transparent black background boxes behind all text elements
+  - Maximum visibility and contrast against any background color
+  - Consistent text-with-background rendering helper function
+  - Improved spacing and positioning for larger text elements
 
 ## [1.2.1] - 2025-10-24
 
