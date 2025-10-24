@@ -29,6 +29,13 @@ def create_config_page_html(config_data: Dict[str, Any]) -> str:
     snow_threshold = config_data.get("snow_detection_threshold", 0.7)
     ice_temp = config_data.get("ice_warning_temperature", 32)
     hazardous_depth = config_data.get("hazardous_snow_depth", 2.0)
+    sequence_update_interval = config_data.get("sequence_update_interval_minutes", 5)
+    max_images = config_data.get("max_images_per_sequence", 10)
+    gif_frame_duration = config_data.get("gif_frame_duration_seconds", 1.0)
+    gif_optimization = config_data.get("gif_optimization_level", "balanced")
+    
+    # Calculate capture interval for display
+    capture_interval = (sequence_update_interval * 60) / max_images if max_images > 0 else 30
     
     html = f"""
 <!DOCTYPE html>
@@ -366,6 +373,72 @@ def create_config_page_html(config_data: Dict[str, Any]) -> str:
                     </div>
                 </div>
                 
+                <!-- Update Interval Settings -->
+                <div class="form-section">
+                    <h3>Update Interval Settings</h3>
+                    
+                    <div class="form-group">
+                        <label for="sequence_update_interval_minutes">GIF Update Interval (minutes)</label>
+                        <select id="sequence_update_interval_minutes" name="sequence_update_interval_minutes">
+                            <option value="1" {"selected" if sequence_update_interval == 1 else ""}>1 minute</option>
+                            <option value="2" {"selected" if sequence_update_interval == 2 else ""}>2 minutes</option>
+                            <option value="5" {"selected" if sequence_update_interval == 5 else ""}>5 minutes</option>
+                            <option value="10" {"selected" if sequence_update_interval == 10 else ""}>10 minutes</option>
+                            <option value="15" {"selected" if sequence_update_interval == 15 else ""}>15 minutes</option>
+                            <option value="30" {"selected" if sequence_update_interval == 30 else ""}>30 minutes</option>
+                        </select>
+                        <div class="help-text">How often to generate and update the GIF sequence</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="max_images_per_sequence">Images Per Sequence</label>
+                        <input type="number" id="max_images_per_sequence" name="max_images_per_sequence" 
+                               value="{max_images}" min="5" max="30" step="1">
+                        <div class="help-text">Number of frames in each GIF (5-30)</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="gif_frame_duration_seconds">Frame Duration (seconds)</label>
+                        <input type="number" id="gif_frame_duration_seconds" name="gif_frame_duration_seconds" 
+                               value="{gif_frame_duration}" min="0.5" max="5.0" step="0.1">
+                        <div class="help-text">How long each frame displays in the GIF</div>
+                    </div>
+                    
+                    <div class="location-info">
+                        <h4>Calculated Capture Interval</h4>
+                        <p><strong>{capture_interval:.1f} seconds</strong> between photo captures</p>
+                        <div class="help-text">Automatically calculated: (Update Interval × 60) ÷ Images Per Sequence</div>
+                    </div>
+                </div>
+                
+                <!-- GIF Optimization -->
+                <div class="form-section">
+                    <h3>GIF Optimization</h3>
+                    
+                    <div class="form-group">
+                        <label for="gif_optimization_level">Optimization Level</label>
+                        <select id="gif_optimization_level" name="gif_optimization_level">
+                            <option value="low" {"selected" if gif_optimization == "low" else ""}>Low (256 colors, larger file)</option>
+                            <option value="balanced" {"selected" if gif_optimization == "balanced" else ""}>Balanced (192 colors, good quality)</option>
+                            <option value="aggressive" {"selected" if gif_optimization == "aggressive" else ""}>Aggressive (128 colors, smallest file)</option>
+                        </select>
+                        <div class="help-text">Balance between file size and image quality. All GIFs resized to 1280x720 for web.</div>
+                    </div>
+                </div>
+                
+                <!-- Debug Tools -->
+                <div class="form-section">
+                    <h3>Debug Tools</h3>
+                    
+                    <div class="form-group">
+                        <label>Road Boundary Visualization</label>
+                        <a href="/analytics/road-boundaries" target="_blank" class="btn btn-secondary" style="display: inline-block; padding: 10px 20px; margin-top: 10px;">
+                            View Road Detection Area
+                        </a>
+                        <div class="help-text">Opens a visualization showing the detected road boundaries used for analytics</div>
+                    </div>
+                </div>
+                
                 <!-- Warning Thresholds -->
                 <div class="form-section">
                     <h3>Warning Thresholds</h3>
@@ -427,6 +500,9 @@ def create_config_page_html(config_data: Dict[str, Any]) -> str:
             config.snow_detection_threshold = parseFloat(config.snow_detection_threshold);
             config.ice_warning_temperature = parseFloat(config.ice_warning_temperature);
             config.hazardous_snow_depth = parseFloat(config.hazardous_snow_depth);
+            config.sequence_update_interval_minutes = parseInt(config.sequence_update_interval_minutes);
+            config.max_images_per_sequence = parseInt(config.max_images_per_sequence);
+            config.gif_frame_duration_seconds = parseFloat(config.gif_frame_duration_seconds);
             
             try {{
                 const response = await fetch('/config/analytics', {{
