@@ -451,6 +451,9 @@ def create_app(settings: Settings) -> FastAPI:
             cv_image = cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)
             
             if mode == "raw":
+                # Generate metadata even for raw mode
+                _, metadata = service.analytics.road_detector.visualize_road_boundaries(cv_image)
+                
                 # Return original image without annotations for ROI editor
                 img_byte_arr = BytesIO()
                 pil_image.save(img_byte_arr, format='JPEG', quality=85)
@@ -458,7 +461,13 @@ def create_app(settings: Settings) -> FastAPI:
                 
                 return Response(
                     content=img_byte_arr.read(),
-                    media_type="image/jpeg"
+                    media_type="image/jpeg",
+                    headers={
+                        "X-Road-Pixels": str(metadata.get("road_pixels", 0)),
+                        "X-Road-Percentage": str(metadata.get("road_percentage", 0)),
+                        "X-Contours-Detected": str(metadata.get("contours_detected", 0)),
+                        "X-Timestamp": timestamp.isoformat()
+                    }
                 )
             else:
                 # Visualize road boundaries

@@ -572,6 +572,7 @@ def create_config_page_html(config_data: Dict[str, Any]) -> str:
             // Convert checkbox values
             config.analytics_enabled = document.getElementById('analytics_enabled').checked;
             config.analytics_overlay_enabled = document.getElementById('analytics_overlay_enabled').checked;
+            config.road_roi_enabled = document.getElementById('road_roi_enabled').checked;
             
             // Convert numeric values
             config.weather_latitude = parseFloat(config.weather_latitude);
