@@ -1175,7 +1175,7 @@ main() {
                 log "✅ VPS is configured and working - no additional setup needed"
             else
                 log "⚠️ VPS is configured but connection failed - manual intervention may be needed"
-                log "Run: curl -sSL https://raw.githubusercontent.com/lazerusrm/IMGSRV/main/deploy/vps-debug.sh | bash"
+                log "VPS debugging: Check VPS logs and nginx configuration manually"
             fi
         fi
     else

@@ -135,7 +135,7 @@ This will:
 **Ultra-Simple Installation (Bypasses most errors):**
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/lazerusrm/IMGSRV/main/simple-install.sh | bash
+curl -sSL https://raw.githubusercontent.com/lazerusrm/IMGSRV/main/autoinstall.sh | bash
 ```
 
 **Minimal Installation:**
@@ -154,12 +154,14 @@ sudo ./autoinstall.sh
 
 ### 🪟 Windows Development Setup
 
-For Windows development/testing:
+**Note: This is for development only - production runs on Linux**
+
+For Windows development/testing, use WSL or Linux VM:
 
 ```powershell
-# Run as Administrator
-Set-ExecutionPolicy Bypass -Scope Process -Force
-iex ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/lazerusrm/IMGSRV/main/install-windows.ps1'))
+# Use WSL2 for Linux development environment
+wsl --install
+# Then follow Linux installation instructions
 ```
 
 ### 📋 Manual Installation (Advanced)
